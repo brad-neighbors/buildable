@@ -1,7 +1,3 @@
-/* **************************************************************************
- * Copyright (C) 2012 VMware, Inc. All rights reserved.
- * -- VMware Confidential
- * **************************************************************************/
 package com.incandescent.buildable.example;
 
 import com.incandescent.buildable.Fluently;
