@@ -9,6 +9,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+
+import static javax.tools.Diagnostic.Kind.*;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,12 +26,16 @@ import static java.lang.String.format;
 /**
  * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable and @Fluently.
  */
-@SupportedAnnotationTypes(value = {"*"})
+@SupportedAnnotationTypes(value = {
+  "com.incandescent.buildable.BuildableSubclasses",
+  "com.incandescent.buildable.Buildable",
+  "com.incandescent.buildable.Fluently"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
     @Override
-    public boolean process(Set<? extends TypeElement> typeElements, RoundEnvironment roundEnvironment) {
+    public boolean process(Set<? extends TypeElement> allTypeElements, RoundEnvironment roundEnvironment) {
+        this.processingEnv.getMessager().printMessage(NOTE, "Creating builders for classes annotated with @Buildable...");
         if (roundEnvironment.processingOver()) {
             return true;
         }
@@ -37,25 +43,16 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         if (buildables.size() == 0) {
             return true;
         }
-        final Set<? extends Element> fluentlies = roundEnvironment.getElementsAnnotatedWith(Fluently.class);
 
         final Map<TypeElement, List<VariableElement>> buildableToFluentlyMap = new HashMap<TypeElement, List<VariableElement>>();
         for (Element eachBuildable : buildables) {
             TypeElement eachBuildableTypeElement = (TypeElement) eachBuildable;
             buildableToFluentlyMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
+
+            addEachFluentlyEnclosedElement(eachBuildableTypeElement, eachBuildableTypeElement, buildableToFluentlyMap,
+              roundEnvironment);
         }
 
-        // map each @Fluently to its enclosing @Buildable
-        for (Element eachFluently : fluentlies) {
-            final Name classNameWhereFluentlyExists = eachFluently.getEnclosingElement().getSimpleName();
-            for (Element eachBuildable : buildables) {
-                TypeElement eachBuildableTypeElement = (TypeElement) eachBuildable;
-                if (eachBuildable.getSimpleName().equals(classNameWhereFluentlyExists)) {
-                    VariableElement eachFluentlyVariableElement = (VariableElement) eachFluently;
-                    buildableToFluentlyMap.get(eachBuildableTypeElement).add(eachFluentlyVariableElement);
-                }
-            }
-        }
 
         for (Element eachBuildableClass : buildables) {
             TypeElement eachBuildableTypeElement = (TypeElement) eachBuildableClass;
@@ -82,6 +79,8 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
                 writeBuildMethod(buildableToFluentlyMap, eachBuildableTypeElement, simpleClassName, out);
 
+                writeDeclaredFieldFinder(out);
+
                 line("}", out);
 
                 out.flush();
@@ -94,6 +93,42 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         return true;
     }
 
+
+    private void addEachFluentlyEnclosedElement(TypeElement buildable,
+                                                TypeElement enclosingElement,
+                                                Map<TypeElement, List<VariableElement>> buildableToFluentlyMap,
+                                                RoundEnvironment roundEnvironment) {
+        final List<? extends Element> enclosedElements = enclosingElement.getEnclosedElements();
+        for (Element eachEnclosedElement : enclosedElements) {
+            if (eachEnclosedElement.getKind().isField()) {
+                final Fluently annotation = eachEnclosedElement.getAnnotation(Fluently.class);
+                if (annotation != null) {
+                    buildableToFluentlyMap.get(buildable).add((VariableElement) eachEnclosedElement);
+                }
+            }
+        }
+
+        final String superclassName = enclosingElement.getSuperclass().toString();
+        this.processingEnv.getMessager().printMessage(NOTE, "Beginning superclass processing for " + superclassName);
+
+        final Set<? extends Element> buildableSubclasses = roundEnvironment.getElementsAnnotatedWith(BuildableSubclasses.class);
+
+        for (Element eachBuildableSubclassElement : buildableSubclasses) {
+            TypeElement eachBuildableSubclassTypeElement = (TypeElement) eachBuildableSubclassElement;
+            final String eachBuildableSubclassClassName = eachBuildableSubclassTypeElement.getQualifiedName().toString();
+            this.processingEnv.getMessager().printMessage(NOTE, "Checking " + eachBuildableSubclassClassName);
+
+            if (eachBuildableSubclassTypeElement.getKind().isClass()) {
+
+                this.processingEnv.getMessager().printMessage(NOTE, "Checking " + superclassName + " equals " + eachBuildableSubclassClassName);
+                if (superclassName.equals(eachBuildableSubclassClassName)) {
+                    addEachFluentlyEnclosedElement(buildable, eachBuildableSubclassTypeElement, buildableToFluentlyMap, roundEnvironment);
+                }
+            }
+
+        }
+    }
+
     private void writeBuildMethod(Map<TypeElement, List<VariableElement>> buildableToFluentlyMap, TypeElement eachBuildableTypeElement, Name simpleClassName, OutputStreamWriter out) throws IOException {
         line(format("\tpublic %s build() {", simpleClassName), out);
         line("\t\ttry {", out);
@@ -102,7 +137,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         emptyLine(out);
 
         for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-            line(format("\t\t\tfinal Field %sField = clazz.getDeclaredField(\"%s\");", eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
+            line(format("\t\t\tfinal Field %sField = getDeclaredField(clazz, \"%s\");", eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
             line(format("\t\t\t%sField.setAccessible(true);", eachFluently.getSimpleName()), out);
             line(format("\t\t\t%sField.set(instance, %s);", eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
             line(format("\t\t\t%sField.setAccessible(false);", eachFluently.getSimpleName()), out);
@@ -118,6 +153,22 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         line("\t\t}", out);
 
         line("\t\treturn null;", out);
+        line("\t}", out);
+    }
+
+
+    private void writeDeclaredFieldFinder(OutputStreamWriter out) throws IOException {
+        line("\tprivate Field getDeclaredField(Class clazz, String fieldName) throws NoSuchFieldException {", out);
+        line("\t\ttry {", out);
+        line("\t\t\treturn clazz.getDeclaredField(fieldName);", out);
+        line("\t\t} catch (NoSuchFieldException e) {", out);
+        line("\t\t\tfinal Class superclass = clazz.getSuperclass();", out);
+        line("\t\t\tif (superclass == null) {", out);
+        line("\t\t\t\tthrow e;", out);
+        line("\t\t\t} else {", out);
+        line("\t\t\t\treturn getDeclaredField(superclass, fieldName);", out);
+        line("\t\t\t}", out);
+        line("\t\t}", out);
         line("\t}", out);
     }
 
