@@ -1,7 +1,7 @@
 package com.incandescent.buildable.example;
 
-import com.incandescent.buildable.Buildable;
-import com.incandescent.buildable.Fluently;
+import com.incandescent.buildable.annotation.Buildable;
+import com.incandescent.buildable.annotation.Fluently;
 
 /**
  * An example POJO that demonstrates generating a UserBuilder.

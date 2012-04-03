@@ -1,7 +1,7 @@
 package com.incandescent.buildable.example;
 
-import com.incandescent.buildable.BuildableSubclasses;
-import com.incandescent.buildable.Fluently;
+import com.incandescent.buildable.annotation.BuildableSubclasses;
+import com.incandescent.buildable.annotation.Fluently;
 
 /**
  * An example abstract class that has an @Fluently annotation marked on it to test if @Buildable subclasses will have

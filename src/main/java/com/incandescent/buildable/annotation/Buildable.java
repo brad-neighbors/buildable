@@ -1,4 +1,4 @@
-package com.incandescent.buildable;
+package com.incandescent.buildable.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

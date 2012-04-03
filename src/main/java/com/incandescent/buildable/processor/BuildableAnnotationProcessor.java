@@ -1,4 +1,8 @@
-package com.incandescent.buildable;
+package com.incandescent.buildable.processor;
+
+import com.incandescent.buildable.annotation.Buildable;
+import com.incandescent.buildable.annotation.BuildableSubclasses;
+import com.incandescent.buildable.annotation.Fluently;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -27,9 +31,9 @@ import static java.lang.String.format;
  * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable and @Fluently.
  */
 @SupportedAnnotationTypes(value = {
-  "com.incandescent.buildable.BuildableSubclasses",
-  "com.incandescent.buildable.Buildable",
-  "com.incandescent.buildable.Fluently"})
+  "com.incandescent.buildable.annotation.BuildableSubclasses",
+  "com.incandescent.buildable.annotation.Buildable",
+  "com.incandescent.buildable.annotation.Fluently"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
