@@ -129,7 +129,6 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                     addEachFluentlyEnclosedElement(buildable, eachBuildableSubclassTypeElement, buildableToFluentlyMap, roundEnvironment);
                 }
             }
-
         }
     }
 
@@ -177,27 +176,38 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
     }
 
     private void writeFactoryMethodAndConstructor(Buildable theBuildable, OutputStreamWriter out) throws IOException {
-        line(format("\tpublic static %s %s() {",
-          theBuildable.name(),
-          theBuildable.factoryMethod()),
-          out);
+        // honor the "factoryMethod" name in the @Buildable if not building an abstract clas
+        if (!theBuildable.makeAbstract()) {
+            line(format("\tpublic static %s %s() {",
+              theBuildable.name(),
+              theBuildable.factoryMethod()),
+              out);
 
-        line(format("\t\treturn new %s();",
-          theBuildable.name()),
-          out);
+            line(format("\t\treturn new %s();",
+              theBuildable.name()),
+              out);
 
-        line("\t}", out);
-        emptyLine(out);
+            line("\t}", out);
+            emptyLine(out);
+        }
 
-        line(format("\tprivate %s() {}",
-          theBuildable.name()),
-          out);
+        // if it's abstract, make the constructor protected, private otherwise
+        if (theBuildable.makeAbstract()) {
+            line(format("\tprotected %s() {}",
+                      theBuildable.name()),
+                      out);
+        } else {
+            line(format("\tprivate %s() {}",
+              theBuildable.name()),
+              out);
+        }
 
         emptyLine(out);
     }
 
     private void writeClassDeclaration(Name simpleName, Buildable theBuildable, OutputStreamWriter out) throws IOException {
-        line(format("public class %s implements Builder<%s> {",
+        line(format("public %s class %s implements Builder<%s> {",
+          theBuildable.makeAbstract() ? "abstract" : "",
           theBuildable.name(),
           simpleName)
           , out);

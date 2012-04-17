@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
  *     }
  * </pre>
  * <p/>
- * Will result in a builder class: (with implementation left out..)
+ * Will result in a builder class: (with full implementation omitted for brevity..)
  *
  * <pre>
  *  package com.acme;
@@ -53,6 +53,56 @@ import java.lang.annotation.Target;
  *      }
  *  }
  * </pre>
+ *
+ * <p/>
+ * Conversely a builder can be specified to be built as an abstract class,
+ * in which case the factoryMethod() will be ignored:
+ *
+ * <pre>
+ *     package com.acme;
+ *
+ *     <tt>@</tt>Buildable(name="UserBuilder", makeAbstract=true)
+ *     public class User {
+ *
+ *         <tt>@</tt>Fluently(methodName="named")
+ *         private String name;
+ *
+ *         protected User(){}
+ *     }
+ * </pre>
+ * <p/>
+ *
+ * Will result in a builder:
+ * <pre>
+ *  package com.acme;
+ *  import com.incandescent.buildable.Builder;
+ *  ...
+ *  public abstract class UserBuilder implements Builder<tt><</tt>User<tt>></tt> {
+ *
+ *      protected UserBuilder(){}
+ *
+ *      public UserBuilder named(String name) {
+ *          ...
+ *      }
+ *
+ *      public User build() {
+ *          ...
+ *      }
+ *  }
+ * </pre>
+ * <p/>
+ * That can of course be further subclassed as needed:
+ * <pre>
+ *   package com.acme;
+ *  import com.incandescent.buildable.Builder;
+ *  ...
+ *  public class MyUserBuilder extends UserBuilder {
+ *
+ *       public static UserBuilder johnDoe() {
+ *           return new UserBuilder().named("John Doe");
+ *       }
+ *  }
+ * </pre>
  */
 @Documented
 @Target({ElementType.TYPE})
@@ -66,8 +116,15 @@ public @interface Buildable {
     String name();
 
     /**
+     * Specifies if the generated builder class is to be abstract or not.
+     * @return <code>true</code> if the builder should be abstract.
+     */
+    boolean makeAbstract() default false;
+
+    /**
      * Specifies what the Builder's static factory method will be named.
      * @return The builder's sole factory method.
      */
-    String factoryMethod();
+    String factoryMethod() default "";
+
 }
