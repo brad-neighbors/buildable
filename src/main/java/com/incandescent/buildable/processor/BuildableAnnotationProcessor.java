@@ -19,6 +19,8 @@ import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -63,10 +65,12 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
             Name simpleClassName = eachBuildableTypeElement.getSimpleName();
             Name qualifiedClassName = eachBuildableTypeElement.getQualifiedName();
+            String packageName = getPackageNameFrom(qualifiedClassName);
 
             try {
                 final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
-                final JavaFileObject javaFileObject = processingEnv.getFiler().createSourceFile(qualifiedClassName + "Builder", eachBuildableClass);
+                final JavaFileObject javaFileObject = processingEnv.getFiler().createSourceFile(packageName + "." +
+                        theBuildable.name(), eachBuildableClass);
 
                 final OutputStream outputStream = javaFileObject.openOutputStream();
                 final OutputStreamWriter out = new OutputStreamWriter(outputStream);
@@ -97,6 +101,10 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         return true;
     }
 
+    private String getPackageNameFrom(final Name qualifiedClassName) {
+        final int indexOfLastPeriod = qualifiedClassName.toString().lastIndexOf(".");
+        return qualifiedClassName.toString().substring(0, indexOfLastPeriod);
+    }
 
     private void addEachFluentlyEnclosedElement(TypeElement buildable,
                                                 TypeElement enclosingElement,
@@ -140,10 +148,24 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         emptyLine(out);
 
         for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-            line(format("\t\t\tfinal Field %sField = getDeclaredField(clazz, \"%s\");", eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
-            line(format("\t\t\t%sField.setAccessible(true);", eachFluently.getSimpleName()), out);
-            line(format("\t\t\t%sField.set(instance, %s);", eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
-            line(format("\t\t\t%sField.setAccessible(false);", eachFluently.getSimpleName()), out);
+
+            line("\t\t\ttry {", out);
+            line(format("\t\t\t\tfinal Method %sMethod = clazz.getDeclaredMethod(\"set%s\", %s.class);",
+                    eachFluently.getSimpleName(), capitalize(eachFluently.getSimpleName()),
+                    eachFluently.asType()), out);
+            line(format("\t\t\t\t%sMethod.setAccessible(true);", eachFluently.getSimpleName()), out);
+            line(format("\t\t\t\t%sMethod.invoke(instance, %s);", eachFluently.getSimpleName(),
+                    eachFluently.getSimpleName()), out);
+            line("\t\t\t} catch (NoSuchMethodException nsme) {", out);
+            line("\t\t\t\t// method doesn't exist, set field directly", out);
+
+            line(format("\t\t\t\tfinal Field %sField = getDeclaredField(clazz, \"%s\");",
+                    eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
+            line(format("\t\t\t\t%sField.setAccessible(true);", eachFluently.getSimpleName()), out);
+            line(format("\t\t\t\t%sField.set(instance, %s);", eachFluently.getSimpleName(),
+                    eachFluently.getSimpleName()), out);
+            line(format("\t\t\t\t%sField.setAccessible(false);", eachFluently.getSimpleName()), out);
+            line("\t\t\t}", out);
             emptyLine(out);
         }
 
@@ -157,6 +179,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
         line("\t\treturn null;", out);
         line("\t}", out);
+    }
+
+    private Object capitalize(final Name simpleName) {
+        final String name = simpleName.toString();
+        return name.substring(0, 1).toUpperCase() + name.substring(1, name.length());
     }
 
 
@@ -220,7 +247,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         emptyLine(out);
         line("import com.incandescent.buildable.Builder;", out);
         line("import java.lang.reflect.Field;", out);
-
+        line("import java.lang.reflect.Method;", out);
         emptyLine(out);
         emptyLine(out);
     }
