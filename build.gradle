@@ -18,9 +18,38 @@ uploadArchives {
   repositories {
     mavenDeployer {
       repository(url: "~/.m2/repository/")
-      pom.version = '0.2'
-      pom.groupId = 'com.incandescent'
-      pom.artifactId = 'buildable'
+      pom.project {
+          version '0.2'
+          groupId 'com.incandescent'
+          artifactId 'buildable'
+          name 'Buildable'
+          description 'Java annotation processing for generating Fluent-API style builders'
+
+          licenses {
+            license {
+              name 'The Apache Software License, Version 2.0'
+              url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution 'repo'
+            }
+          }
+
+          scm {
+            url 'https://github.com/brad-neighbors/buildable/'
+          }
+
+          developers {
+            developer {
+              id 'bneighbors'
+              name 'Brad Neighbors'
+              email 'brad.r.neighbors@gmail.com'
+              url 'http://incandescent.bradneighbors.com/'
+              timezone '-6'
+              roles {
+                role 'developer'
+              }
+            }
+          }
+      }
     }
   }
 }
