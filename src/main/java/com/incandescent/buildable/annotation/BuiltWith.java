@@ -21,16 +21,16 @@ import java.lang.annotation.Target;
  *     <tt>@</tt>Buildable(name="UserBuilder", factoryMethod="aUser")
  *     public class User {
  *
- *         <tt>@</tt>Fluently(methodName="named")
+ *         <tt>@</tt>BuiltWith(methodName="named")
  *         private String name;
  *
- *         <tt>@</tt>Fluently(methodName="identifiedBy")
+ *         <tt>@</tt>BuiltWith(methodName="identifiedBy")
  *         private Long id;
  *
- *         <tt>@</tt>Fluently(methodName="livingIn")
+ *         <tt>@</tt>BuiltWith(methodName="livingIn")
  *         private String zipCode;
  *
- *         <tt>@</tt>Fluently(methodName="withEmail")
+ *         <tt>@</tt>BuiltWith(methodName="withEmail")
  *         private String email;
  *
  *         protected User(){}
@@ -48,7 +48,7 @@ import java.lang.annotation.Target;
 @Documented
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
-public @interface Fluently {
+public @interface BuiltWith {
 
     /**
      * Specifies the name of the method that will be generated on the builder to assign values to the field.

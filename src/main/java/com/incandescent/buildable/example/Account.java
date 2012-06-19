@@ -1,7 +1,7 @@
 package com.incandescent.buildable.example;
 
 import com.incandescent.buildable.annotation.Buildable;
-import com.incandescent.buildable.annotation.Fluently;
+import com.incandescent.buildable.annotation.BuiltWith;
 
 /**
  * An example POJO that will help demonstrate the @Fluently annotations work when included in superclasses.
@@ -11,7 +11,7 @@ public class Account extends Identified {
 
     private static final String EMPTY_ACCOUNT_ID = "unassigned";
 
-    @Fluently(methodName = "named")
+    @BuiltWith(methodName = "named")
     private String name;
 
 

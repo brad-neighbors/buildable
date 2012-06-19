@@ -2,7 +2,7 @@ package com.incandescent.buildable.processor;
 
 import com.incandescent.buildable.annotation.Buildable;
 import com.incandescent.buildable.annotation.BuildableSubclasses;
-import com.incandescent.buildable.annotation.Fluently;
+import com.incandescent.buildable.annotation.BuiltWith;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -19,8 +19,6 @@ import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,7 +28,7 @@ import java.util.Set;
 import static java.lang.String.format;
 
 /**
- * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable and @Fluently.
+ * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable, @BuildableSubclasses and @BuiltWith.
  */
 @SupportedAnnotationTypes(value = {
   "com.incandescent.buildable.annotation.BuildableSubclasses",
@@ -113,7 +111,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         final List<? extends Element> enclosedElements = enclosingElement.getEnclosedElements();
         for (Element eachEnclosedElement : enclosedElements) {
             if (eachEnclosedElement.getKind().isField()) {
-                final Fluently annotation = eachEnclosedElement.getAnnotation(Fluently.class);
+                final BuiltWith annotation = eachEnclosedElement.getAnnotation(BuiltWith.class);
                 if (annotation != null) {
                     buildableToFluentlyMap.get(buildable).add((VariableElement) eachEnclosedElement);
                 }
@@ -253,7 +251,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
     }
 
     private void writeFluentElement(VariableElement variableElement, String builderName, OutputStreamWriter out) throws IOException {
-        final Fluently annotation = variableElement.getAnnotation(Fluently.class);
+        final BuiltWith annotation = variableElement.getAnnotation(BuiltWith.class);
         line(format("\tprivate %s %s = %s;",
           variableElement.asType(),
           variableElement.getSimpleName().toString(),

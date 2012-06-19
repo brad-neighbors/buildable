@@ -1,7 +1,7 @@
 package com.incandescent.buildable.example;
 
 import com.incandescent.buildable.annotation.BuildableSubclasses;
-import com.incandescent.buildable.annotation.Fluently;
+import com.incandescent.buildable.annotation.BuiltWith;
 
 /**
  * An example abstract class that has an @Fluently annotation marked on it to test if @Buildable subclasses will have
@@ -10,7 +10,7 @@ import com.incandescent.buildable.annotation.Fluently;
 @BuildableSubclasses
 public abstract class Identified {
 
-    @Fluently(methodName = "identifiedBy", defaultValue = "\"id_123\"")
+    @BuiltWith(methodName = "identifiedBy", defaultValue = "\"id_123\"")
     private String id;
 
     protected Identified(String id) {

@@ -18,7 +18,7 @@ uploadArchives {
   repositories {
     mavenDeployer {
       repository(url: "~/.m2/repository/")
-      pom.version = '0.1'
+      pom.version = '0.2'
       pom.groupId = 'com.incandescent'
       pom.artifactId = 'buildable'
     }
