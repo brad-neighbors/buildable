@@ -21,6 +21,9 @@ public class User {
     @BuiltWith(methodName = "livingInZip", defaultValue = "94114")
     private Integer zipCode;
 
+    @BuiltWith(methodName = "havingAccount", defaultValue = "new Account(\"account_id\")")
+    private Account account;
+
     protected User(){}
 
     public String getName() {
@@ -37,5 +40,9 @@ public class User {
 
     public Integer getZipCode() {
         return zipCode;
+    }
+
+    public Account getAccount() {
+        return account;
     }
 }

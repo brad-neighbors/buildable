@@ -15,6 +15,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 
 import static javax.tools.Diagnostic.Kind.*;
+
+import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -80,7 +82,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 writeFactoryMethodAndConstructor(theBuildable, out);
 
                 for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-                    writeFluentElement(eachFluently, theBuildable.name(), out);
+                    writeFluentElement(eachFluently, theBuildable.name(), out, buildables);
                 }
 
                 writeBuildMethod(buildableToFluentlyMap, eachBuildableTypeElement, simpleClassName, out);
@@ -250,14 +252,18 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         emptyLine(out);
     }
 
-    private void writeFluentElement(VariableElement variableElement, String builderName, OutputStreamWriter out) throws IOException {
+    private void writeFluentElement(VariableElement variableElement, String builderName, OutputStreamWriter out,
+                                    final Set<? extends Element> buildables) throws IOException {
         final BuiltWith annotation = variableElement.getAnnotation(BuiltWith.class);
+
+        // write the field declaration
         line(format("\tprivate %s %s = %s;",
           variableElement.asType(),
           variableElement.getSimpleName().toString(),
           annotation.defaultValue()),
           out);
 
+        // write the fluent built-with method that takes in the instance of the field
         line(format("\tpublic %s %s(%s %s) {",
           builderName, annotation.methodName(),
           variableElement.asType(),
@@ -271,6 +277,39 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
         line(format("\t\treturn this;"), out);
         line("\t}", out);
+
+        emptyLine(out);
+
+        // check each @Buildable, if the field itself is of a class marked @Buildable, we can overload
+        // the fluent built-with method to also accept its builder as a parameter
+        boolean foundBuilderForVariable = false;
+        Element variableClassElement = null;
+        for (Element eachBuildable : buildables) {
+            if (eachBuildable.asType().equals(variableElement.asType())) {
+                foundBuilderForVariable = true;
+                variableClassElement = eachBuildable;
+                break;
+            }
+        }
+
+        if (foundBuilderForVariable) {
+
+            final String packageNameOVariableBuilder = getPackageNameFrom(((TypeElement) variableClassElement)
+                    .getQualifiedName());
+            final Buildable variableBuildable = variableClassElement.getAnnotation(Buildable.class);
+
+            line(format("\tpublic %s %s(%s %s) {", builderName, annotation.methodName(),
+                    packageNameOVariableBuilder + "." + variableBuildable.name(),
+                    variableElement.getSimpleName() + "Builder"), out);
+
+            line(format("\t\tthis.%s = %s.build();",
+                      variableElement.getSimpleName(),
+                      variableElement.getSimpleName() + "Builder"),
+                      out);
+
+            line(format("\t\treturn this;"), out);
+            line("\t}", out);
+        }
 
         emptyLine(out);
     }
