@@ -50,11 +50,17 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface BuiltWith {
 
+    public static final String USE_SENSIBLE_DEFAULT = "";
+
     /**
      * Specifies the name of the method that will be generated on the builder to assign values to the field.
+     * <p>
+     *     If blank, then "with" + the field name will be used.  For example, given private String name, the name
+     *     of the buildable fluent method would be "withName()'.
+     * </p>
      * @return The builder's fluent-api style assignment method name for this field.
      */
-    String methodName();
+    String methodName() default USE_SENSIBLE_DEFAULT;
 
     /**
      * Specifies the default value the Builder will build the class with, as a string.
@@ -63,5 +69,7 @@ public @interface BuiltWith {
      * </p>
      * @return The default value in the builder, as a string.
      */
-    String defaultValue() default "null";
+    String defaultValue() default USE_SENSIBLE_DEFAULT;
+
+
 }

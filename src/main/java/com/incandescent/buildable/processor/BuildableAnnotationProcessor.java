@@ -16,6 +16,7 @@ import javax.lang.model.element.VariableElement;
 
 import static javax.tools.Diagnostic.Kind.*;
 
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
@@ -94,7 +95,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 out.flush();
                 outputStream.close();
 
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -252,27 +253,42 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         emptyLine(out);
     }
 
-    private void writeFluentElement(VariableElement variableElement, String builderName, OutputStreamWriter out,
-                                    final Set<? extends Element> buildables) throws IOException {
-        final BuiltWith annotation = variableElement.getAnnotation(BuiltWith.class);
+    private void writeFluentElement(VariableElement field, String builderName, OutputStreamWriter out,
+                                    final Set<? extends Element> buildables) throws Exception{
+
+        final BuiltWith annotation = field.getAnnotation(BuiltWith.class);
+
+        // determine the default value
+
 
         // write the field declaration
-        line(format("\tprivate %s %s = %s;",
-          variableElement.asType(),
-          variableElement.getSimpleName().toString(),
-          annotation.defaultValue()),
-          out);
+        if (field.asType().getKind().isPrimitive()) {
+            // it's primitive, so let's not assign a default value...
+            line(format("\tprivate %s %s;",
+              field.asType(),
+              field.getSimpleName().toString()),
+              out);
+        } else {
+            String defaultValue = determineDefaultValue(field, annotation);
+            line(format("\tprivate %s %s = %s;",
+              field.asType(),
+              field.getSimpleName().toString(),
+              defaultValue),
+              out);
+        }
+
+        String methodName = determineFluentMethodName(annotation, field);
 
         // write the fluent built-with method that takes in the instance of the field
         line(format("\tpublic %s %s(%s %s) {",
-          builderName, annotation.methodName(),
-          variableElement.asType(),
-          variableElement.getSimpleName()),
+          builderName, methodName,
+          field.asType(),
+          field.getSimpleName()),
           out);
 
         line(format("\t\tthis.%s = %s;",
-          variableElement.getSimpleName(),
-          variableElement.getSimpleName()),
+          field.getSimpleName(),
+          field.getSimpleName()),
           out);
 
         line(format("\t\treturn this;"), out);
@@ -285,7 +301,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         boolean foundBuilderForVariable = false;
         Element variableClassElement = null;
         for (Element eachBuildable : buildables) {
-            if (eachBuildable.asType().equals(variableElement.asType())) {
+            if (eachBuildable.asType().equals(field.asType())) {
                 foundBuilderForVariable = true;
                 variableClassElement = eachBuildable;
                 break;
@@ -300,11 +316,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
             line(format("\tpublic %s %s(%s %s) {", builderName, annotation.methodName(),
                     packageNameOVariableBuilder + "." + variableBuildable.name(),
-                    variableElement.getSimpleName() + "Builder"), out);
+                    field.getSimpleName() + "Builder"), out);
 
             line(format("\t\tthis.%s = %s.build();",
-                      variableElement.getSimpleName(),
-                      variableElement.getSimpleName() + "Builder"),
+                      field.getSimpleName(),
+                      field.getSimpleName() + "Builder"),
                       out);
 
             line(format("\t\treturn this;"), out);
@@ -312,6 +328,48 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         }
 
         emptyLine(out);
+    }
+
+    private String determineFluentMethodName(final BuiltWith annotation, final VariableElement field) {
+        if (!BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.methodName())) {
+            return annotation.methodName();
+        }
+        return "with" + capitalize(field.getSimpleName());
+    }
+
+    private String determineDefaultValue(final VariableElement field, final BuiltWith builtWith)
+            throws ClassNotFoundException {
+
+        System.err.println("Determining default value...");
+        String defaultValue = builtWith.defaultValue();
+
+        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(defaultValue)) {
+            if (!field.asType().getKind().isPrimitive()) {
+                Class clazz = Class.forName(field.asType().toString());
+                if (clazz.isAssignableFrom(String.class)) {
+                    defaultValue = "\"value\"";
+                } else if (clazz.isAssignableFrom(Character.class)) {
+                    defaultValue = "\'\\u0000\'";
+                } else if (clazz.isAssignableFrom(Float.class)) {
+                    defaultValue = "0f";
+                } else if (clazz.isAssignableFrom(Integer.class)) {
+                    defaultValue = "0";
+                } else if (clazz.isAssignableFrom(Short.class)) {
+                    defaultValue = "0";
+                } else if (clazz.isAssignableFrom(Long.class)) {
+                    defaultValue = "0L";
+                } else if (clazz.isAssignableFrom(Double.class)) {
+                    defaultValue = "0D";
+                } else if (clazz.isAssignableFrom(Boolean.class)) {
+                    defaultValue = "false";
+                } else if (clazz.isAssignableFrom(Byte.class)) {
+                    defaultValue = "Byte.MIN_VALUE";
+                } else {
+                    defaultValue = "null";
+                }
+            }
+        }
+        return defaultValue;
     }
 
     private String packageNameFromQualifiedName(Name qualifiedName) {

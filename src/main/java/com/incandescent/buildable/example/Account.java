@@ -14,7 +14,6 @@ public class Account extends Identified {
     @BuiltWith(methodName = "named")
     private String name;
 
-
     public Account(String id){
         super(id);
     }

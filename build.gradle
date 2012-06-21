@@ -19,7 +19,7 @@ uploadArchives {
     mavenDeployer {
       repository(url: "~/.m2/repository/")
       pom.project {
-          version '0.3'
+          version '0.4'
           groupId 'com.incandescent'
           artifactId 'buildable'
           name 'Buildable'

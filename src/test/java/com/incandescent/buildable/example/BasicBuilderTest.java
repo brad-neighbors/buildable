@@ -25,7 +25,7 @@ public class BasicBuilderTest {
         assertEquals("Account matches", account.getId(), aUser().havingAccount(account).build().getAccount().getId());
     }
 
-    @Test public void canBuilderUserWithAccountByPassingInAccountBuilder() {
+    @Test public void canBuildUserWithAccountByPassingInAccountBuilder() {
         assertEquals("Account matches", "foo", aUser().havingAccount(anAccount().identifiedBy("foo")).build()
                 .getAccount().getId());
     }
