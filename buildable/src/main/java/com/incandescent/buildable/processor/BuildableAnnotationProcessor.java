@@ -16,8 +16,6 @@ import javax.lang.model.element.VariableElement;
 
 import static javax.tools.Diagnostic.Kind.*;
 
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
