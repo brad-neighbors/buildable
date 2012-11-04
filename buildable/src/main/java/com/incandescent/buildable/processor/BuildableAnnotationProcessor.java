@@ -32,9 +32,9 @@ import static java.lang.String.format;
  * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable, @BuildableSubclasses and @BuiltWith.
  */
 @SupportedAnnotationTypes(value = {
-  "com.incandescent.buildable.annotation.BuildableSubclasses",
-  "com.incandescent.buildable.annotation.Buildable",
-  "com.incandescent.buildable.annotation.Fluently"})
+        "com.incandescent.buildable.annotation.BuildableSubclasses",
+        "com.incandescent.buildable.annotation.Buildable",
+        "com.incandescent.buildable.annotation.Fluently"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
@@ -55,7 +55,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             buildableToFluentlyMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
 
             addEachFluentlyEnclosedElement(eachBuildableTypeElement, eachBuildableTypeElement, buildableToFluentlyMap,
-              roundEnvironment);
+                    roundEnvironment);
         }
 
 
@@ -80,6 +80,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
                 writeFactoryMethodAndConstructor(theBuildable, out);
 
+                if (!theBuildable.cloneMethod().isEmpty()){
+                writeCloneableMethod(theBuildable, out, simpleClassName,
+                        buildableToFluentlyMap.get(eachBuildableTypeElement));
+
+                }
                 for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
                     writeFluentElement(eachFluently, theBuildable.name(), out, buildables);
                 }
@@ -98,6 +103,30 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             }
         }
         return true;
+    }
+
+    private void writeCloneableMethod(Buildable theBuildable, OutputStreamWriter out, Name simpleName,
+                                      List<VariableElement> elements) {
+        try {
+            char variable = simpleName.toString().toLowerCase().charAt(0);
+            line(format("\tpublic %s %s (%s %c) {",
+                    theBuildable.name(), theBuildable.cloneMethod(), simpleName, variable),
+                    out);
+            for (VariableElement eachFluently : elements) {
+                line(format("\t\tthis.%s = %c.get%s();", eachFluently.getSimpleName(), variable,
+                        capitalize(eachFluently.getSimpleName())), out);
+            }
+
+            line(format("\t\treturn new %s();",
+                    theBuildable.name()),
+                    out);
+
+            line("\t}", out);
+            emptyLine(out);
+
+        } catch (IOException e) {
+            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+        }
     }
 
     private String getPackageNameFrom(final Name qualifiedClassName) {
@@ -151,7 +180,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             line("\t\t\ttry {", out);
             line(format("\t\t\t\tfinal Method %sMethod = clazz.getDeclaredMethod(\"set%s\", %s.class);",
                     eachFluently.getSimpleName(), capitalize(eachFluently.getSimpleName()),
-                    eachFluently.asType()), out);
+                    eachFluently.asType().toString().replaceAll("<[.,<>a-zA-Z0-9]*>", "")), out);
             line(format("\t\t\t\t%sMethod.setAccessible(true);", eachFluently.getSimpleName()), out);
             line(format("\t\t\t\t%sMethod.invoke(instance, %s);", eachFluently.getSimpleName(),
                     eachFluently.getSimpleName()), out);
@@ -205,13 +234,13 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         // honor the "factoryMethod" name in the @Buildable if not building an abstract clas
         if (!theBuildable.makeAbstract()) {
             line(format("\tpublic static %s %s() {",
-              theBuildable.name(),
-              theBuildable.factoryMethod()),
-              out);
+                    theBuildable.name(),
+                    theBuildable.factoryMethod()),
+                    out);
 
             line(format("\t\treturn new %s();",
-              theBuildable.name()),
-              out);
+                    theBuildable.name()),
+                    out);
 
             line("\t}", out);
             emptyLine(out);
@@ -220,12 +249,12 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         // if it's abstract, make the constructor protected, private otherwise
         if (theBuildable.makeAbstract()) {
             line(format("\tprotected %s() {}",
-                      theBuildable.name()),
-                      out);
+                    theBuildable.name()),
+                    out);
         } else {
             line(format("\tprivate %s() {}",
-              theBuildable.name()),
-              out);
+                    theBuildable.name()),
+                    out);
         }
 
         emptyLine(out);
@@ -233,10 +262,10 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
     private void writeClassDeclaration(Name simpleName, Buildable theBuildable, OutputStreamWriter out) throws IOException {
         line(format("public %s class %s implements Builder<%s> {",
-          theBuildable.makeAbstract() ? "abstract" : "",
-          theBuildable.name(),
-          simpleName)
-          , out);
+                theBuildable.makeAbstract() ? "abstract" : "",
+                theBuildable.name(),
+                simpleName)
+                , out);
 
         emptyLine(out);
     }
@@ -263,31 +292,49 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         if (field.asType().getKind().isPrimitive()) {
             // it's primitive, so let's not assign a default value...
             line(format("\tprivate %s %s;",
-              field.asType(),
-              field.getSimpleName().toString()),
-              out);
+                    field.asType(),
+                    field.getSimpleName().toString()),
+                    out);
         } else {
             String defaultValue = determineDefaultValue(field, annotation);
-            line(format("\tprivate %s %s = %s;",
-              field.asType(),
-              field.getSimpleName().toString(),
-              defaultValue),
-              out);
+            if (defaultValue.isEmpty()) {
+                line(format("\tprivate %s %s;",
+                        field.asType(),
+                        field.getSimpleName().toString()),
+                        out);
+            } else {
+                line(format("\tprivate %s %s = %s;",
+                        field.asType(),
+                        field.getSimpleName().toString(),
+                        defaultValue),
+                        out);
+            }
         }
 
         String methodName = determineFluentMethodName(annotation, field);
 
-        // write the fluent built-with method that takes in the instance of the field
-        line(format("\tpublic %s %s(%s %s) {",
-          builderName, methodName,
-          field.asType(),
-          field.getSimpleName()),
-          out);
+        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgs())){
+            // write the fluent built-with method that takes in the instance of the field
+            line(format("\tpublic %s %s(%s %s) {",
+                    builderName, methodName,
+                    field.asType(),
+                    field.getSimpleName()),
+                    out);
+        } else {
+            line(format("\tpublic %s %s(%s) {",
+                    builderName, methodName,
+                    annotation.overrideArgs())
+                    ,out);
+        }
 
-        line(format("\t\tthis.%s = %s;",
-          field.getSimpleName(),
-          field.getSimpleName()),
-          out);
+        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideMethod())) {
+            line(format("\t\tthis.%s = %s;",
+                    field.getSimpleName(),
+                    field.getSimpleName()),
+                    out);
+        } else {
+            line(format("%s", annotation.overrideMethod()),out);
+        }
 
         line(format("\t\treturn this;"), out);
         line("\t}", out);
@@ -317,9 +364,9 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                     field.getSimpleName() + "Builder"), out);
 
             line(format("\t\tthis.%s = %s.build();",
-                      field.getSimpleName(),
-                      field.getSimpleName() + "Builder"),
-                      out);
+                    field.getSimpleName(),
+                    field.getSimpleName() + "Builder"),
+                    out);
 
             line(format("\t\treturn this;"), out);
             line("\t}", out);
@@ -342,6 +389,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         String defaultValue = builtWith.defaultValue();
 
         if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(defaultValue)) {
+            try {
             if (!field.asType().getKind().isPrimitive()) {
                 Class clazz = Class.forName(field.asType().toString());
                 if (clazz.isAssignableFrom(String.class)) {
@@ -365,6 +413,9 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 } else {
                     defaultValue = "null";
                 }
+            }
+            }   catch(ClassNotFoundException e) {
+                defaultValue = "null";
             }
         }
         return defaultValue;

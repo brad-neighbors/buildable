@@ -127,4 +127,5 @@ public @interface Buildable {
      */
     String factoryMethod() default "";
 
+    String cloneMethod() default "";
 }

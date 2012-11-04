@@ -71,5 +71,7 @@ public @interface BuiltWith {
      */
     String defaultValue() default USE_SENSIBLE_DEFAULT;
 
+    String overrideArgs()  default USE_SENSIBLE_DEFAULT;
 
+    String overrideMethod() default USE_SENSIBLE_DEFAULT;
 }
