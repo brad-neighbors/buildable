@@ -71,7 +71,15 @@ public @interface BuiltWith {
      */
     String defaultValue() default USE_SENSIBLE_DEFAULT;
 
-    String overrideArgs()  default USE_SENSIBLE_DEFAULT;
+    String overrideArgType() default USE_SENSIBLE_DEFAULT;
 
-    String overrideMethod() default USE_SENSIBLE_DEFAULT;
+    String overrideClassifer() default USE_SENSIBLE_DEFAULT;
+
+    OverrideMethod overrideMethod() default OverrideMethod.NULL;
+
+    public enum OverrideMethod {
+        NULL, AddToList,
+    }
+
+
 }

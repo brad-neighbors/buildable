@@ -81,8 +81,8 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 writeFactoryMethodAndConstructor(theBuildable, out);
 
                 if (!theBuildable.cloneMethod().isEmpty()){
-                writeCloneableMethod(theBuildable, out, simpleClassName,
-                        buildableToFluentlyMap.get(eachBuildableTypeElement));
+                    writeCloneableMethod(theBuildable, out, simpleClassName,
+                            buildableToFluentlyMap.get(eachBuildableTypeElement));
 
                 }
                 for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
@@ -313,7 +313,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
         String methodName = determineFluentMethodName(annotation, field);
 
-        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgs())){
+        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgType())){
             // write the fluent built-with method that takes in the instance of the field
             line(format("\tpublic %s %s(%s %s) {",
                     builderName, methodName,
@@ -321,20 +321,30 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                     field.getSimpleName()),
                     out);
         } else {
-            line(format("\tpublic %s %s(%s) {",
+            line(format("\tpublic %s %s(%s %s) {",
                     builderName, methodName,
-                    annotation.overrideArgs())
+                    annotation.overrideArgType(),
+                    field.getSimpleName())
                     ,out);
         }
+        if (annotation.overrideMethod() != BuiltWith.OverrideMethod.NULL) {
+            switch (annotation.overrideMethod()) {
+                case AddToList:
+                    line(format("\t\tthis.%s = new %s;", field.getSimpleName(), annotation.overrideClassifer()),
+                            out);
+                    line(format("\t\tjava.util.Collections.addAll(this.%s, %s);", field.getSimpleName(),
+                            field.getSimpleName()),
+                            out);
+            }
 
-        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideMethod())) {
+        } else {
             line(format("\t\tthis.%s = %s;",
                     field.getSimpleName(),
                     field.getSimpleName()),
                     out);
-        } else {
-            line(format("%s", annotation.overrideMethod()),out);
         }
+
+
 
         line(format("\t\treturn this;"), out);
         line("\t}", out);
@@ -390,30 +400,30 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
         if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(defaultValue)) {
             try {
-            if (!field.asType().getKind().isPrimitive()) {
-                Class clazz = Class.forName(field.asType().toString());
-                if (clazz.isAssignableFrom(String.class)) {
-                    defaultValue = "\"value\"";
-                } else if (clazz.isAssignableFrom(Character.class)) {
-                    defaultValue = "\'\\u0000\'";
-                } else if (clazz.isAssignableFrom(Float.class)) {
-                    defaultValue = "0f";
-                } else if (clazz.isAssignableFrom(Integer.class)) {
-                    defaultValue = "0";
-                } else if (clazz.isAssignableFrom(Short.class)) {
-                    defaultValue = "0";
-                } else if (clazz.isAssignableFrom(Long.class)) {
-                    defaultValue = "0L";
-                } else if (clazz.isAssignableFrom(Double.class)) {
-                    defaultValue = "0D";
-                } else if (clazz.isAssignableFrom(Boolean.class)) {
-                    defaultValue = "false";
-                } else if (clazz.isAssignableFrom(Byte.class)) {
-                    defaultValue = "Byte.MIN_VALUE";
-                } else {
-                    defaultValue = "null";
+                if (!field.asType().getKind().isPrimitive()) {
+                    Class clazz = Class.forName(field.asType().toString());
+                    if (clazz.isAssignableFrom(String.class)) {
+                        defaultValue = "\"value\"";
+                    } else if (clazz.isAssignableFrom(Character.class)) {
+                        defaultValue = "\'\\u0000\'";
+                    } else if (clazz.isAssignableFrom(Float.class)) {
+                        defaultValue = "0f";
+                    } else if (clazz.isAssignableFrom(Integer.class)) {
+                        defaultValue = "0";
+                    } else if (clazz.isAssignableFrom(Short.class)) {
+                        defaultValue = "0";
+                    } else if (clazz.isAssignableFrom(Long.class)) {
+                        defaultValue = "0L";
+                    } else if (clazz.isAssignableFrom(Double.class)) {
+                        defaultValue = "0D";
+                    } else if (clazz.isAssignableFrom(Boolean.class)) {
+                        defaultValue = "false";
+                    } else if (clazz.isAssignableFrom(Byte.class)) {
+                        defaultValue = "Byte.MIN_VALUE";
+                    } else {
+                        defaultValue = "null";
+                    }
                 }
-            }
             }   catch(ClassNotFoundException e) {
                 defaultValue = "null";
             }
