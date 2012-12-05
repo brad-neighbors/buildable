@@ -1,59 +1,45 @@
-apply plugin: 'java'
-apply plugin: 'maven'
+subprojects {
+    group 'com.incandescent'
+    version '0.7'
+    apply plugin: 'java'
+    apply plugin: 'maven'
 
-sourceSets {
-    main {
-        java {
-            srcDir 'generated'
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+
+}
+
+project(':testing') {
+    configurations {
+        annotations
+    }
+
+    dependencies {
+        compile project(':buildable')
+        annotations project(':buildable')
+    }
+
+    compileJava.doFirst {
+        ant.delete(dir:'generated') {
+            include name: "**/*.java"
         }
     }
-}
 
-repositories {
-  mavenCentral()
-  mavenLocal()
-}
 
-uploadArchives {
-  repositories {
-    mavenDeployer {
-      repository(url: "~/.m2/repository/")
-      pom.project {
-          version '0.4'
-          groupId 'com.incandescent'
-          artifactId 'buildable'
-          name 'Buildable'
-          description 'Java annotation processing for generating Fluent-API style builders'
-
-          licenses {
-            license {
-              name 'The Apache Software License, Version 2.0'
-              url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                distribution 'repo'
-            }
-          }
-
-          scm {
-            url 'https://github.com/brad-neighbors/buildable/'
-          }
-
-          developers {
-            developer {
-              id 'bneighbors'
-              name 'Brad Neighbors'
-              email 'brad.r.neighbors@gmail.com'
-              url 'http://incandescent.bradneighbors.com/'
-              timezone '-6'
-              roles {
-                role 'developer'
-              }
-            }
-          }
-      }
+    compileJava {
+            options.compilerArgs = ["-processor","com.incandescent.buildable.processor.BuildableAnnotationProcessor"]
+            classpath += configurations.annotations
     }
-  }
-}
 
-dependencies {
-  testCompile group: 'junit', name: 'junit', version: '4.8.1'
+
+    compileJava << {
+        ant.move(toDir: 'generated') {
+            fileset(dir:"build/classes/main") {
+                include name:"**/*.java"
+                exclude name:"**/*.class"
+            }
+        }
+    }
 }
