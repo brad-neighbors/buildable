@@ -13,9 +13,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-
-import static javax.tools.Diagnostic.Kind.*;
-
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static java.lang.String.format;
+import static javax.tools.Diagnostic.Kind.NOTE;
 
 /**
  * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable, @BuildableSubclasses and @BuiltWith.
@@ -34,7 +32,7 @@ import static java.lang.String.format;
 @SupportedAnnotationTypes(value = {
         "com.incandescent.buildable.annotation.BuildableSubclasses",
         "com.incandescent.buildable.annotation.Buildable",
-        "com.incandescent.buildable.annotation.Fluently"})
+        "com.incandescent.buildable.annotation.BuiltWith"})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
@@ -69,7 +67,8 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             try {
                 final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
                 final JavaFileObject javaFileObject = processingEnv.getFiler().createSourceFile(packageName + "." +
-                        theBuildable.name(), eachBuildableClass);
+                        createBuilderName(theBuildable, simpleClassName), eachBuildableClass);;
+
 
                 final OutputStream outputStream = javaFileObject.openOutputStream();
                 final OutputStreamWriter out = new OutputStreamWriter(outputStream);
@@ -78,15 +77,15 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
                 writeClassDeclaration(simpleClassName, theBuildable, out);
 
-                writeFactoryMethodAndConstructor(theBuildable, out);
+                writeFactoryMethodAndConstructor(theBuildable, simpleClassName, out);
 
-                if (!theBuildable.cloneMethod().isEmpty()){
+                if (!theBuildable.cloneMethod().equals(Buildable.USE_SENSIBLE_DEFAULT)){
                     writeCloneableMethod(theBuildable, out, simpleClassName,
                             buildableToFluentlyMap.get(eachBuildableTypeElement));
 
                 }
                 for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-                    writeFluentElement(eachFluently, theBuildable.name(), out, buildables);
+                    writeFluentElement(eachFluently, createBuilderName(theBuildable, simpleClassName), out, buildables);
                 }
 
                 writeBuildMethod(buildableToFluentlyMap, eachBuildableTypeElement, simpleClassName, out);
@@ -110,7 +109,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         try {
             char variable = simpleName.toString().toLowerCase().charAt(0);
             line(format("\tpublic %s %s (%s %c) {",
-                    theBuildable.name(), theBuildable.cloneMethod(), simpleName, variable),
+                    createBuilderName(theBuildable, simpleName), theBuildable.cloneMethod(), simpleName, variable),
                     out);
             for (VariableElement eachFluently : elements) {
                 line(format("\t\tthis.%s = %c.get%s();", eachFluently.getSimpleName(), variable,
@@ -118,7 +117,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             }
 
             line(format("\t\treturn new %s();",
-                    theBuildable.name()),
+                    createBuilderName(theBuildable, simpleName)),
                     out);
 
             line("\t}", out);
@@ -230,16 +229,16 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         line("\t}", out);
     }
 
-    private void writeFactoryMethodAndConstructor(Buildable theBuildable, OutputStreamWriter out) throws IOException {
+    private void writeFactoryMethodAndConstructor(Buildable theBuildable, Name simpleName, OutputStreamWriter out) throws IOException {
         // honor the "factoryMethod" name in the @Buildable if not building an abstract clas
         if (!theBuildable.makeAbstract()) {
             line(format("\tpublic static %s %s() {",
-                    theBuildable.name(),
-                    theBuildable.factoryMethod()),
+                    createBuilderName(theBuildable, simpleName),
+                    createFactoryMethodName(theBuildable, simpleName)),
                     out);
 
             line(format("\t\treturn new %s();",
-                    theBuildable.name()),
+                    createBuilderName(theBuildable, simpleName)),
                     out);
 
             line("\t}", out);
@@ -249,11 +248,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         // if it's abstract, make the constructor protected, private otherwise
         if (theBuildable.makeAbstract()) {
             line(format("\tprotected %s() {}",
-                    theBuildable.name()),
+                    createBuilderName(theBuildable, simpleName)),
                     out);
         } else {
             line(format("\tprivate %s() {}",
-                    theBuildable.name()),
+                    createBuilderName(theBuildable, simpleName)),
                     out);
         }
 
@@ -263,7 +262,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
     private void writeClassDeclaration(Name simpleName, Buildable theBuildable, OutputStreamWriter out) throws IOException {
         line(format("public %s class %s implements Builder<%s> {",
                 theBuildable.makeAbstract() ? "abstract" : "",
-                theBuildable.name(),
+                createBuilderName(theBuildable, simpleName),
                 simpleName)
                 , out);
 
@@ -367,10 +366,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
 
             final String packageNameOVariableBuilder = getPackageNameFrom(((TypeElement) variableClassElement)
                     .getQualifiedName());
+            final Name classNameOfVariableBuilder = variableClassElement.getSimpleName();
             final Buildable variableBuildable = variableClassElement.getAnnotation(Buildable.class);
 
-            line(format("\tpublic %s %s(%s %s) {", builderName, annotation.methodName(),
-                    packageNameOVariableBuilder + "." + variableBuildable.name(),
+            line(format("\tpublic %s %s(%s %s) {", builderName, methodName,
+                    packageNameOVariableBuilder + "." + createBuilderName(variableBuildable, classNameOfVariableBuilder),
                     field.getSimpleName() + "Builder"), out);
 
             line(format("\t\tthis.%s = %s.build();",
@@ -447,5 +447,25 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
     private void line(String text, OutputStreamWriter writer) throws IOException {
         writer.write(text);
         writer.write('\n');
+    }
+
+    private String createBuilderName(Buildable buildable, Name className) {
+        if (buildable.name().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
+            return className + "Builder";
+        } else {
+            return buildable.name();
+        }
+    }
+
+    private String createFactoryMethodName(Buildable buildable, Name className) {
+        if (buildable.factoryMethod().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
+            if (className.toString().matches("[AEIOUaeiou].*")) {
+                return "an" + className.toString();
+            } else {
+                return "a" + className.toString();
+            }
+        } else {
+            return buildable.factoryMethod();
+        }
     }
 }

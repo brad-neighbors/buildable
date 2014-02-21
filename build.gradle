@@ -1,6 +1,6 @@
 subprojects {
     group 'com.incandescent'
-    version '0.7'
+    version '0.8'
     apply plugin: 'java'
     apply plugin: 'maven'
 

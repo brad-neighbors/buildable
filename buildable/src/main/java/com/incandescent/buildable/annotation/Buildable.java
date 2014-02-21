@@ -109,11 +109,14 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface Buildable {
 
+    public static final String USE_SENSIBLE_DEFAULT = "";
+
+
     /**
      * Specifies what the name of the Builder class will be.
      * @return The simple class name of the Builder class.
      */
-    String name();
+    String name() default USE_SENSIBLE_DEFAULT;
 
     /**
      * Specifies if the generated builder class is to be abstract or not.
@@ -125,7 +128,7 @@ public @interface Buildable {
      * Specifies what the Builder's static factory method will be named.
      * @return The builder's sole factory method.
      */
-    String factoryMethod() default "";
+    String factoryMethod() default USE_SENSIBLE_DEFAULT;
 
-    String cloneMethod() default "";
+    String cloneMethod() default USE_SENSIBLE_DEFAULT;
 }

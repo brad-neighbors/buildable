@@ -6,7 +6,7 @@ import com.incandescent.buildable.annotation.BuiltWith;
 /**
  * An example POJO that will help demonstrate the @Fluently annotations work when included in superclasses.
  */
-@Buildable(name = "AccountBuilder", factoryMethod = "anAccount")
+@Buildable
 public class Account extends Identified {
 
     private static final String EMPTY_ACCOUNT_ID = "unassigned";
