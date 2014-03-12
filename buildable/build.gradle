@@ -8,8 +8,8 @@ uploadArchives {
         mavenDeployer {
             repository(url: "~/.m2/repository/")
             pom.project {
-                version '0.8'
-                groupId 'com.incandescent'
+                version '1.0'
+                groupId 'buildable'
                 artifactId 'buildable'
                 name 'Buildable'
                 description 'Java annotation processing for generating Fluent-API style builders'
