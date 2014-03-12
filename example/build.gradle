@@ -37,12 +37,9 @@ signing {
 uploadArchives {
     repositories {
         mavenDeployer {
-            repository(url: "~/.m2/repository/")
-        }
-        mavenDeployer {
             beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+            repository(url: version.endsWith('RELEASE') ? 'https://oss.sonatype.org/service/local/staging/deploy/maven2' : 'https://oss.sonatype.org/content/repositories/snapshots') {
                 authentication(userName: sonatypeUsername, password: sonatypePassword)
             }
 
