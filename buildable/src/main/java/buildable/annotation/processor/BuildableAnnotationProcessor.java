@@ -1,8 +1,8 @@
-package com.incandescent.buildable.processor;
+package buildable.annotation.processor;
 
-import com.incandescent.buildable.annotation.Buildable;
-import com.incandescent.buildable.annotation.BuildableSubclasses;
-import com.incandescent.buildable.annotation.BuiltWith;
+import buildable.annotation.Buildable;
+import buildable.annotation.BuildableSubclasses;
+import buildable.annotation.BuiltWith;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -30,10 +30,11 @@ import static javax.tools.Diagnostic.Kind.NOTE;
  * An annotation processor to generate fluent-api style builders for classes annotated with @Buildable, @BuildableSubclasses and @BuiltWith.
  */
 @SupportedAnnotationTypes(value = {
-        "com.incandescent.buildable.annotation.BuildableSubclasses",
-        "com.incandescent.buildable.annotation.Buildable",
-        "com.incandescent.buildable.annotation.BuiltWith"})
-@SupportedSourceVersion(SourceVersion.RELEASE_6)
+        "buildable.annotation.BuildableSubclasses",
+        "buildable.annotation.Buildable",
+        "buildable.annotation.BuiltWith"})
+@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SuppressWarnings("UnusedDeclaration")
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
     @Override
@@ -47,7 +48,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             return true;
         }
 
-        final Map<TypeElement, List<VariableElement>> buildableToFluentlyMap = new HashMap<TypeElement, List<VariableElement>>();
+        final Map<TypeElement, List<VariableElement>> buildableToFluentlyMap = new HashMap<>();
         for (Element eachBuildable : buildables) {
             TypeElement eachBuildableTypeElement = (TypeElement) eachBuildable;
             buildableToFluentlyMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
@@ -67,7 +68,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             try {
                 final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
                 final JavaFileObject javaFileObject = processingEnv.getFiler().createSourceFile(packageName + "." +
-                        createBuilderName(theBuildable, simpleClassName), eachBuildableClass);;
+                        createBuilderName(theBuildable, simpleClassName), eachBuildableClass);
 
 
                 final OutputStream outputStream = javaFileObject.openOutputStream();
@@ -124,7 +125,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             emptyLine(out);
 
         } catch (IOException e) {
-            e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
+            e.printStackTrace();
         }
     }
 
@@ -272,7 +273,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
     private void writePackageAndImports(Name qualifiedName, OutputStreamWriter out) throws IOException {
         line("package " + packageNameFromQualifiedName(qualifiedName) + ";", out);
         emptyLine(out);
-        line("import com.incandescent.buildable.Builder;", out);
+        line("import buildable.Builder;", out);
         line("import java.lang.reflect.Field;", out);
         line("import java.lang.reflect.Method;", out);
         emptyLine(out);
@@ -392,6 +393,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         return "with" + capitalize(field.getSimpleName());
     }
 
+    @SuppressWarnings("unchecked")
     private String determineDefaultValue(final VariableElement field, final BuiltWith builtWith)
             throws ClassNotFoundException {
 
@@ -402,6 +404,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             try {
                 if (!field.asType().getKind().isPrimitive()) {
                     Class clazz = Class.forName(field.asType().toString());
+
                     if (clazz.isAssignableFrom(String.class)) {
                         defaultValue = "\"value\"";
                     } else if (clazz.isAssignableFrom(Character.class)) {

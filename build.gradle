@@ -29,7 +29,7 @@ project(':testing') {
 
 
     compileJava {
-            options.compilerArgs = ["-processor","com.incandescent.buildable.processor.BuildableAnnotationProcessor"]
+            options.compilerArgs = ["-processor","buildable.annotation.processor.BuildableAnnotationProcessor"]
             classpath += configurations.annotations
     }
 

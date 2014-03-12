@@ -1,9 +1,9 @@
-package com.incandescent.buildable.example;
+package buildable.example;
 
 import org.junit.Test;
 
-import static com.incandescent.buildable.example.AccountBuilder.anAccount;
-import static com.incandescent.buildable.example.UserBuilder.aUser;
+import static buildable.example.AccountBuilder.anAccount;
+import static buildable.example.UserBuilder.aUser;
 import static junit.framework.Assert.assertEquals;
 
 public class BasicBuilderTest {

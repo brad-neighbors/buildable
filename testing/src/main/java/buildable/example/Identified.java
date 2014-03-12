@@ -1,10 +1,10 @@
-package com.incandescent.buildable.example;
+package buildable.example;
 
-import com.incandescent.buildable.annotation.BuildableSubclasses;
-import com.incandescent.buildable.annotation.BuiltWith;
+import buildable.annotation.BuildableSubclasses;
+import buildable.annotation.BuiltWith;
 
 /**
- * An example abstract class that has an @Fluently annotation marked on it to test if @Buildable subclasses will have
+ * An example abstract class that has an @BuiltWith annotation marked on it to test if @Buildable subclasses will have
  * these fields included in their builders.
  */
 @BuildableSubclasses

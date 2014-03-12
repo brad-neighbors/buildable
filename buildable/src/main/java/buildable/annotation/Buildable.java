@@ -1,4 +1,4 @@
-package com.incandescent.buildable.annotation;
+package buildable.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * <p/>
  * Classes annotated with @Buildable must have an empty protected (or public) constructor.
  * <p/>
- * Each field that you would like the builder to use in a fluent api, annotate with @Fluently.
+ * Each field that you would like the builder to use in a fluent api, annotate with @BuiltWith.
  * <p/>
  * The name of the Builder that is generated may be specified with the name().
  * <p/>
@@ -35,7 +35,7 @@ import java.lang.annotation.Target;
  *
  * <pre>
  *  package com.acme;
- *  import com.incandescent.buildable.Builder;
+ *  import buildable.Builder;
  *  ...
  *  public class UserBuilder implements Builder<tt><</tt>User<tt>></tt> {
  *
@@ -75,7 +75,7 @@ import java.lang.annotation.Target;
  * Will result in a builder:
  * <pre>
  *  package com.acme;
- *  import com.incandescent.buildable.Builder;
+ *  import buildable.Builder;
  *  ...
  *  public abstract class UserBuilder implements Builder<tt><</tt>User<tt>></tt> {
  *
@@ -94,7 +94,7 @@ import java.lang.annotation.Target;
  * That can of course be further subclassed as needed:
  * <pre>
  *   package com.acme;
- *  import com.incandescent.buildable.Builder;
+ *  import buildable.Builder;
  *  ...
  *  public class MyUserBuilder extends UserBuilder {
  *

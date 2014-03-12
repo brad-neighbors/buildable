@@ -1,11 +1,12 @@
-package com.incandescent.buildable.example;
+package buildable.example;
 
-import com.incandescent.buildable.annotation.Buildable;
-import com.incandescent.buildable.annotation.BuiltWith;
+import buildable.annotation.Buildable;
+import buildable.annotation.BuiltWith;
 
 @Buildable(name = "AdminBuilder", makeAbstract = true)
 public class Admin {
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "named", defaultValue = "\"suzieAdmin\"")
     private String name;
 

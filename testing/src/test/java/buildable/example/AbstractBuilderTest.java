@@ -2,7 +2,7 @@
  * Copyright (C) 2012 VMware, Inc. All rights reserved.
  * -- VMware Confidential
  * **************************************************************************/
-package com.incandescent.buildable.example;
+package buildable.example;
 
 import org.junit.Test;
 

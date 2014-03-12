@@ -1,4 +1,4 @@
-package com.incandescent.buildable;
+package buildable;
 
 /**
  * Specifies a common interface to build an instance of a specified type.

@@ -1,7 +1,7 @@
-package com.incandescent.buildable.example;
+package buildable.example;
 
-import com.incandescent.buildable.annotation.Buildable;
-import com.incandescent.buildable.annotation.BuiltWith;
+import buildable.annotation.Buildable;
+import buildable.annotation.BuiltWith;
 
 /**
  * An example POJO that demonstrates generating a UserBuilder.
@@ -9,18 +9,23 @@ import com.incandescent.buildable.annotation.BuiltWith;
 @Buildable(name = "UserBuilder", factoryMethod = "aUser")
 public class User {
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "named", defaultValue = "\"John Doe\"")
     private String name;
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "withEmail", defaultValue = "\"johnDoe@acme.com\"")
     private String email;
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "withSsn")
     private String ssn;
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "livingInZip", defaultValue = "94114")
     private Integer zipCode;
 
+    @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "havingAccount", defaultValue = "new Account(\"account_id\")")
     private Account account;
 
@@ -30,10 +35,12 @@ public class User {
         return name;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public String getEmail() {
         return email;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public String getSsn() {
         return ssn;
     }
