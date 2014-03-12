@@ -35,7 +35,7 @@ uploadArchives {
                 artifactId 'buildable'
                 packaging 'jar'
                 description 'Java annotation processing for generating Fluent-API style builders'
-                url 'https://github.com/brad-neighbors/buildable'
+                url 'http://incandescent.bradneighbors.com/'
 
                 scm {
                     url 'https://github.com/brad-neighbors/buildable/'
