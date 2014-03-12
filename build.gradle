@@ -1,5 +1,5 @@
 subprojects {
-    group 'com.bradneighbors.incandescent.buildable'
+    group 'com.bradneighbors.buildable'
     version '1.0'
     apply plugin: 'java'
     apply plugin: 'maven'
@@ -11,7 +11,7 @@ subprojects {
     }
 
 }
-project(':testing') {
+project(':example') {
     configurations {
         annotations
     }
@@ -43,3 +43,4 @@ project(':testing') {
         }
     }
 }
+
