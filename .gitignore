@@ -1,3 +1,7 @@
 /.idea/
 *.iml
 generated
+/buildable/build/
+/example/build/
+.gradle/
+out/

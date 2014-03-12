@@ -1,6 +1,6 @@
 subprojects {
     group 'com.bradneighbors.buildable'
-    version '1.0'
+    version buildableVersion
     apply plugin: 'java'
     apply plugin: 'maven'
     apply plugin: 'signing'
