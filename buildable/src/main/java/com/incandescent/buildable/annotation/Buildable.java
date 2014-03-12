@@ -24,7 +24,7 @@ import java.lang.annotation.Target;
  *     <tt>@</tt>Buildable(name="UserBuilder", factoryMethod="aUser")
  *     public class User {
  *
- *         <tt>@</tt>Fluently(methodName="named")
+ *         <tt>@</tt>BuiltWith(methodName="named")
  *         private String name;
  *
  *         protected User(){}
@@ -64,7 +64,7 @@ import java.lang.annotation.Target;
  *     <tt>@</tt>Buildable(name="UserBuilder", makeAbstract=true)
  *     public class User {
  *
- *         <tt>@</tt>Fluently(methodName="named")
+ *         <tt>@</tt>BuiltWith(methodName="named")
  *         private String name;
  *
  *         protected User(){}
