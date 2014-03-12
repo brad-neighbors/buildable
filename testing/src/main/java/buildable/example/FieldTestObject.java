@@ -1,7 +1,3 @@
-/*******************************************************************************
- * Copyright (C) 2012 VMware, Inc. All rights reserved.
- * -- VMware Confidential
- ******************************************************************************/
 package buildable.example;
 
 import buildable.annotation.Buildable;
