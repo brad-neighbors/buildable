@@ -43,3 +43,38 @@ To build:
   gradle clean build
 </pre>
 
+# Consuming in a Maven build
+
+In your project's pom, you'll need something like this:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.bradneighbors.buildable</groupId>
+        <artifactId>buildable</artifactId>
+        <version>1.0.RELEASE</version>
+    </dependency>
+</dependcies>
+<build>
+    <plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.0</version>
+            <configuration>
+                <annotationProcessors>
+                    <annotationProcessor>buildable.annotation.processor.BuildableAnnotationProcessor</annotationProcessor>
+                </annotationProcessors>
+                <debug>true</debug>
+                <optimize>true</optimize>
+                <source>1.7</source>
+                <target>1.7</target>
+                <compilerArguments>
+                <AaddGeneratedAnnotation>true</AaddGeneratedAnnotation>
+                <Adebug>true</Adebug>
+                </compilerArguments>
+            </configuration>
+        </plugin>
+    </plugins>
+</build>
+```
