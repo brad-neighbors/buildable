@@ -43,6 +43,9 @@ To build:
   gradle clean build
 </pre>
 
+After building, look at `example/generated/buildable/example/` to see what the generated builders look like.
+You can understand their API by looking at the tests in `example/src/test/`
+
 # Consuming in a Maven build
 
 In your project's pom, you'll need something like this:
