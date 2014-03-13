@@ -1,4 +1,5 @@
 subprojects {
+
     group 'com.bradneighbors.buildable'
     version buildableVersion
     apply plugin: 'java'

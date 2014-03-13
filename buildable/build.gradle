@@ -28,16 +28,23 @@ uploadArchives {
             }
 
             pom.project {
+
                 name 'Buildable'
                 artifactId 'buildable'
                 packaging 'jar'
                 description 'Java annotation processing for generating Fluent-API style builders'
                 url 'http://incandescent.bradneighbors.com/'
 
+                parent {
+                    groupId 'org.sonatype.oss'
+                    artifactId 'oss-parent'
+                    version '7'
+                }
+
                 scm {
                     url 'https://github.com/brad-neighbors/buildable/'
-                    connection 'scm:git@github.com:brad-neighbors/buildable.git'
-                    developerConnection 'scm:git@github.com:brad-neighbors/buildable.git'
+                    connection 'scm:git:git@github.com:brad-neighbors/buildable.git'
+                    developerConnection 'scm:git:git@github.com:brad-neighbors/buildable.git'
                 }
 
                 licenses {

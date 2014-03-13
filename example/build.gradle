@@ -19,9 +19,15 @@ task testSourcesJar(type: Jar) {
     classifier = 'test-sources'
 }
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from 'build/docs/javadoc'
+}
+
 
 artifacts {
     archives sourcesJar
+    archives javadocJar
     archives testSourcesJar
 }
 
@@ -50,10 +56,16 @@ uploadArchives {
                 description 'Examples of @Buildable use and tests'
                 url 'http://incandescent.bradneighbors.com/'
 
+                parent {
+                    groupId 'org.sonatype.oss'
+                    artifactId 'oss-parent'
+                    version '7'
+                }
+
                 scm {
                     url 'https://github.com/brad-neighbors/buildable/'
-                    connection 'scm:git@github.com:brad-neighbors/buildable.git'
-                    developerConnection 'scm:git@github.com:brad-neighbors/buildable.git'
+                    connection 'scm:git:git@github.com:brad-neighbors/buildable.git'
+                    developerConnection 'scm:git:git@github.com:brad-neighbors/buildable.git'
                 }
 
                 licenses {
