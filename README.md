@@ -1,34 +1,34 @@
 # Buildable
 
-A java annotation processor for creating object builders with a fluent-api style.
+A java annotation processor for creating object builders with a [fluent-interface](http://en.wikipedia.org/wiki/Fluent_interface).
 
-* Annotate classes with @Buildable
-* Annotate fields with @BuiltWith
-* Support for subclasses @BuildableSubclasses
+* Annotate classes with `@Buildable`
+* Annotate fields with `@BuiltWith`
+* Support for subclasses `@BuildableSubclasses`
 
 # Pre-requisites
 
 * Java 7
 * Gradle (to build from source)
 
-# Releases [Maven Central](http://central.maven.org/maven2/com/bradneighbors/buildable/)
+# Releases via Maven Central
 
-* 1.0.RELEASE on March 13, 2014
+* [1.0.RELEASE](http://central.maven.org/maven2/com/bradneighbors/buildable/buildable/1.0.RELEASE/) on March 13, 2014
 
-<pre>
+```xml
    <dependency>
     <groupId>com.bradneighbors.buildable</groupId>
     <artifactId>buildable</artifactId>
     <version>1.0.RELEASE</version>
    </dependency>
-</pre>
+```
 
 # Modules
 
 ## buildable
 
-* Contains the *@Buildable*, *@BuildableSubclasses*, and *@BuiltWith* annotations
-* Contains the *Builder<T>* interface that all builders will implement
+* Contains the `@Buildable`, `@BuildableSubclasses`, and `@BuiltWith` annotations
+* Contains the `Builder<T>` interface that all builders will implement
 * Contains the annotation processor
 
 ## example
