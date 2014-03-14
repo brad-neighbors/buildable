@@ -81,3 +81,97 @@ In your project's pom, you'll need something like this:
     </plugins>
 </build>
 ```
+
+# Quick Example
+
+For more examples, see the examples module.
+
+To have a new builder generated for you given the following class:
+```java
+import java.util.Date;
+
+public class User {
+
+  private String name;
+  private String info;
+  private Date birthDate;
+
+  public User(String name, String info, Date birthDate) {
+    this.name = name;
+    this.info = info;
+    this.birthDate = birthDate;
+  }
+```
+
+Simply add the following annotations:
+```java
+import java.util.Date;
+import buildable.annotation.Buildable; // import this annotation
+import buildable.annotation.BuiltWith; // import this annotation
+
+@Buildable(name = "UserBuilder", factoryMethod = "aUser") 
+public class User {
+
+  @BuiltWith(methodName = "named", defaultValue = "\"Jane Doe\"") 
+  private String name;
+
+  @BuiltWith
+  private String info;
+
+  @BuiltWith(methodName = "bornOn")
+  private Date birthDate;
+
+  private User(){}
+
+  public User(String name, String info, Date birthDate) {
+    this(); 
+    this.name = name;
+    this.info = info;
+    this.birthDate = birthDate;
+  }
+}
+```
+
+This will generate a builder that looks something like this:
+```java
+import buildable.Builder;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Date;
+
+public class UserBuilder implements Builder<User> {
+
+  public static UserBuilder aUser() {
+    return new UserBuilder();
+  }
+
+  private UserBuilder() {}
+
+  private java.lang.String name = "Jane Doe";
+  public UserBuilder named(java.lang.String name) {
+    this.name = name;
+    return this;
+  }
+
+
+  private java.lang.String info = null;
+  public UserBuilder withInfo(java.lang.String info) {
+    this.info = info;
+	return this;
+  }
+	
+  private java.util.Date birthDate = null;
+  public UserBuilder bornOn(java.util.Date birthDate) {
+    this.birthDate = birthDate;
+    return this;
+  }
+
+  public User build() {
+	// commenting out for brevity here, just try for yourself and you'll see the fields getting set...
+  }
+}
+```
+	  
+	
+
+
