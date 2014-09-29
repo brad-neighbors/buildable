@@ -8,7 +8,7 @@ A java annotation processor for creating object builders with a [fluent-interfac
 
 # Pre-requisites
 
-* Java 7
+* Java 7, yup
 * Gradle (to build from source)
 
 # Releases via Maven Central
