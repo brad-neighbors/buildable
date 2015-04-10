@@ -3,6 +3,7 @@ package buildable.annotation.processor;
 import buildable.annotation.Buildable;
 import buildable.annotation.BuildableSubclasses;
 import buildable.annotation.BuiltWith;
+import buildable.annotation.ExcludeFromBuilder;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -10,20 +11,22 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.JavaFileObject;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static buildable.annotation.processor.Util.createBuilderName;
+import static buildable.annotation.processor.Util.packageNameOf;
 import static java.lang.String.format;
+import static javax.tools.Diagnostic.Kind.ERROR;
 import static javax.tools.Diagnostic.Kind.NOTE;
 
 /**
@@ -32,7 +35,8 @@ import static javax.tools.Diagnostic.Kind.NOTE;
 @SupportedAnnotationTypes(value = {
         "buildable.annotation.BuildableSubclasses",
         "buildable.annotation.Buildable",
-        "buildable.annotation.BuiltWith"})
+        "buildable.annotation.BuiltWith",
+        "buildable.annotation.ExcludeFromBuilder"})
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 @SuppressWarnings("UnusedDeclaration")
 public class BuildableAnnotationProcessor extends AbstractProcessor {
@@ -48,104 +52,89 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             return true;
         }
 
-        final Map<TypeElement, List<VariableElement>> buildableToFluentlyMap = new HashMap<>();
+        final Map<TypeElement, List<VariableElement>> buildableFieldsMap= new HashMap<>();
         for (Element eachBuildable : buildables) {
             TypeElement eachBuildableTypeElement = (TypeElement) eachBuildable;
-            buildableToFluentlyMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
-
-            addEachFluentlyEnclosedElement(eachBuildableTypeElement, eachBuildableTypeElement, buildableToFluentlyMap,
-                    roundEnvironment);
+            buildableFieldsMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
+            determineBuildableFields(eachBuildableTypeElement, eachBuildableTypeElement, buildableFieldsMap, roundEnvironment);
         }
-
 
         for (Element eachBuildableClass : buildables) {
             TypeElement eachBuildableTypeElement = (TypeElement) eachBuildableClass;
 
             Name simpleClassName = eachBuildableTypeElement.getSimpleName();
             Name qualifiedClassName = eachBuildableTypeElement.getQualifiedName();
-            String packageName = getPackageNameFrom(qualifiedClassName);
+            String packageName = packageNameOf(qualifiedClassName);
+
+            final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
+            final String builderName = createBuilderName(theBuildable, simpleClassName);
 
             try {
-                final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
-                final JavaFileObject javaFileObject = processingEnv.getFiler().createSourceFile(packageName + "." +
+                final JavaFileObject javaFileObject =
+                        processingEnv.getFiler().createSourceFile(packageName + "." +
                         createBuilderName(theBuildable, simpleClassName), eachBuildableClass);
 
+                final ClassFileWriter writer = new ClassFileWriter(theBuildable, javaFileObject);
 
-                final OutputStream outputStream = javaFileObject.openOutputStream();
-                final OutputStreamWriter out = new OutputStreamWriter(outputStream);
+                writer.writePackageAndImports(qualifiedClassName);
+                writer.writeClassDeclaration(simpleClassName);
+                writer.writeFactoryMethodAndConstructor(simpleClassName);
 
-                writePackageAndImports(qualifiedClassName, out);
-
-                writeClassDeclaration(simpleClassName, theBuildable, out);
-
-                writeFactoryMethodAndConstructor(theBuildable, simpleClassName, out);
-
-                if (!theBuildable.cloneMethod().equals(Buildable.USE_SENSIBLE_DEFAULT)){
-                    writeCloneableMethod(theBuildable, out, simpleClassName,
-                            buildableToFluentlyMap.get(eachBuildableTypeElement));
-
-                }
-                for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-                    writeFluentElement(eachFluently, createBuilderName(theBuildable, simpleClassName), out, buildables);
+                if (!theBuildable.cloneMethod().isEmpty()) {
+                    writer.writeCloneableMethod(simpleClassName, buildableFieldsMap.get(eachBuildableTypeElement));
                 }
 
-                writeBuildMethod(buildableToFluentlyMap, eachBuildableTypeElement, simpleClassName, out);
+                for (VariableElement eachFieldToBuild : buildableFieldsMap.get(eachBuildableTypeElement)) {
+                    final BuiltWith annotation = eachFieldToBuild.getAnnotation(BuiltWith.class);
+                    final boolean hasBuiltWithSpecifications = annotation != null;
 
-                writeDeclaredFieldFinder(out);
+                    writer.writeFluentElement(
+                            eachFieldToBuild,
+                            builderName,
+                            buildables,
+                            hasBuiltWithSpecifications ?
+                                    determineFieldDefaultValue(eachFieldToBuild, annotation, builderName) : "");
+                }
 
-                line("}", out);
-
-                out.flush();
-                outputStream.close();
+                writer.writeBuildMethod(buildableFieldsMap.get(eachBuildableTypeElement), simpleClassName);
+                writer.finishClass();
 
             } catch (Exception e) {
-                e.printStackTrace();
+                this.processingEnv.getMessager().printMessage(
+                        ERROR,
+                        format("Error creating %s: %s",
+                                qualifiedClassName.toString(),
+                                e.toString()));
             }
         }
         return true;
     }
 
-    private void writeCloneableMethod(Buildable theBuildable, OutputStreamWriter out, Name simpleName,
-                                      List<VariableElement> elements) {
-        try {
-            char variable = simpleName.toString().toLowerCase().charAt(0);
-            line(format("\tpublic %s %s (%s %c) {",
-                    createBuilderName(theBuildable, simpleName), theBuildable.cloneMethod(), simpleName, variable),
-                    out);
-            for (VariableElement eachFluently : elements) {
-                line(format("\t\tthis.%s = %c.get%s();", eachFluently.getSimpleName(), variable,
-                        capitalize(eachFluently.getSimpleName())), out);
-            }
-
-            line(format("\t\treturn new %s();",
-                    createBuilderName(theBuildable, simpleName)),
-                    out);
-
-            line("\t}", out);
-            emptyLine(out);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String getPackageNameFrom(final Name qualifiedClassName) {
-        final int indexOfLastPeriod = qualifiedClassName.toString().lastIndexOf(".");
-        return qualifiedClassName.toString().substring(0, indexOfLastPeriod);
-    }
-
-    private void addEachFluentlyEnclosedElement(TypeElement buildable,
-                                                TypeElement enclosingElement,
-                                                Map<TypeElement, List<VariableElement>> buildableToFluentlyMap,
-                                                RoundEnvironment roundEnvironment) {
+    private void determineBuildableFields(TypeElement buildable,
+                                          TypeElement enclosingElement,
+                                          Map<TypeElement, List<VariableElement>> buildableFieldsMap,
+                                          RoundEnvironment roundEnvironment) {
         final List<? extends Element> enclosedElements = enclosingElement.getEnclosedElements();
         for (Element eachEnclosedElement : enclosedElements) {
-            if (eachEnclosedElement.getKind().isField()) {
-                final BuiltWith annotation = eachEnclosedElement.getAnnotation(BuiltWith.class);
-                if (annotation != null) {
-                    buildableToFluentlyMap.get(buildable).add((VariableElement) eachEnclosedElement);
-                }
+
+            // exclude if not a field
+            if (!eachEnclosedElement.getKind().isField()) {
+                continue;
             }
+
+            // exclude if explicitly annotated to be excluded
+            final ExcludeFromBuilder shouldBeExcluded = eachEnclosedElement.getAnnotation(ExcludeFromBuilder.class);
+            if (shouldBeExcluded != null) {
+                continue;
+            }
+
+            // exclude if it's a static field
+            if (eachEnclosedElement.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+
+            buildableFieldsMap.get(buildable).add((VariableElement) eachEnclosedElement);
+
         }
 
         final String superclassName = enclosingElement.getSuperclass().toString();
@@ -159,247 +148,22 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
             this.processingEnv.getMessager().printMessage(NOTE, "Checking " + eachBuildableSubclassClassName);
 
             if (eachBuildableSubclassTypeElement.getKind().isClass()) {
-
                 this.processingEnv.getMessager().printMessage(NOTE, "Checking " + superclassName + " equals " + eachBuildableSubclassClassName);
                 if (superclassName.equals(eachBuildableSubclassClassName)) {
-                    addEachFluentlyEnclosedElement(buildable, eachBuildableSubclassTypeElement, buildableToFluentlyMap, roundEnvironment);
+                    determineBuildableFields(buildable, eachBuildableSubclassTypeElement, buildableFieldsMap,
+                            roundEnvironment);
                 }
             }
         }
     }
 
-    private void writeBuildMethod(Map<TypeElement, List<VariableElement>> buildableToFluentlyMap, TypeElement eachBuildableTypeElement, Name simpleClassName, OutputStreamWriter out) throws IOException {
-        line(format("\tpublic %s build() {", simpleClassName), out);
-        line("\t\ttry {", out);
-        line(format("\t\t\tfinal Class clazz = Class.forName(%s.class.getCanonicalName());", simpleClassName.toString()), out);
-        line(format("\t\t\tfinal %s instance = (%s) clazz.newInstance();", simpleClassName.toString(), simpleClassName.toString()), out);
-        emptyLine(out);
-
-        for (VariableElement eachFluently : buildableToFluentlyMap.get(eachBuildableTypeElement)) {
-
-            line("\t\t\ttry {", out);
-            line(format("\t\t\t\tfinal Method %sMethod = clazz.getDeclaredMethod(\"set%s\", %s.class);",
-                    eachFluently.getSimpleName(), capitalize(eachFluently.getSimpleName()),
-                    eachFluently.asType().toString().replaceAll("<[.,<>a-zA-Z0-9]*>", "")), out);
-            line(format("\t\t\t\t%sMethod.setAccessible(true);", eachFluently.getSimpleName()), out);
-            line(format("\t\t\t\t%sMethod.invoke(instance, %s);", eachFluently.getSimpleName(),
-                    eachFluently.getSimpleName()), out);
-            line("\t\t\t} catch (NoSuchMethodException nsme) {", out);
-            line("\t\t\t\t// method doesn't exist, set field directly", out);
-
-            line(format("\t\t\t\tfinal Field %sField = getDeclaredField(clazz, \"%s\");",
-                    eachFluently.getSimpleName(), eachFluently.getSimpleName()), out);
-            line(format("\t\t\t\t%sField.setAccessible(true);", eachFluently.getSimpleName()), out);
-            line(format("\t\t\t\t%sField.set(instance, %s);", eachFluently.getSimpleName(),
-                    eachFluently.getSimpleName()), out);
-            line(format("\t\t\t\t%sField.setAccessible(false);", eachFluently.getSimpleName()), out);
-            line("\t\t\t}", out);
-            emptyLine(out);
-        }
-
-        line("\t\t\treturn instance;", out);
-
-        line("\t\t} catch (Exception e) {", out);
-        line("\t\t\te.printStackTrace();", out);
-        line("\t\t} catch (Error e) {", out);
-        line("\t\t\te.printStackTrace();", out);
-        line("\t\t}", out);
-
-        line("\t\treturn null;", out);
-        line("\t}", out);
-    }
-
-    private Object capitalize(final Name simpleName) {
-        final String name = simpleName.toString();
-        return name.substring(0, 1).toUpperCase() + name.substring(1, name.length());
-    }
-
-
-    private void writeDeclaredFieldFinder(OutputStreamWriter out) throws IOException {
-        line("\tprivate Field getDeclaredField(Class clazz, String fieldName) throws NoSuchFieldException {", out);
-        line("\t\ttry {", out);
-        line("\t\t\treturn clazz.getDeclaredField(fieldName);", out);
-        line("\t\t} catch (NoSuchFieldException e) {", out);
-        line("\t\t\tfinal Class superclass = clazz.getSuperclass();", out);
-        line("\t\t\tif (superclass == null) {", out);
-        line("\t\t\t\tthrow e;", out);
-        line("\t\t\t} else {", out);
-        line("\t\t\t\treturn getDeclaredField(superclass, fieldName);", out);
-        line("\t\t\t}", out);
-        line("\t\t}", out);
-        line("\t}", out);
-    }
-
-    private void writeFactoryMethodAndConstructor(Buildable theBuildable, Name simpleName, OutputStreamWriter out) throws IOException {
-        // honor the "factoryMethod" name in the @Buildable if not building an abstract clas
-        if (!theBuildable.makeAbstract()) {
-            line(format("\tpublic static %s %s() {",
-                    createBuilderName(theBuildable, simpleName),
-                    createFactoryMethodName(theBuildable, simpleName)),
-                    out);
-
-            line(format("\t\treturn new %s();",
-                    createBuilderName(theBuildable, simpleName)),
-                    out);
-
-            line("\t}", out);
-            emptyLine(out);
-        }
-
-        // if it's abstract, make the constructor protected, private otherwise
-        if (theBuildable.makeAbstract()) {
-            line(format("\tprotected %s() {}",
-                    createBuilderName(theBuildable, simpleName)),
-                    out);
-        } else {
-            line(format("\tprivate %s() {}",
-                    createBuilderName(theBuildable, simpleName)),
-                    out);
-        }
-
-        emptyLine(out);
-    }
-
-    private void writeClassDeclaration(Name simpleName, Buildable theBuildable, OutputStreamWriter out) throws IOException {
-        line(format("public %s class %s implements Builder<%s> {",
-                theBuildable.makeAbstract() ? "abstract" : "",
-                createBuilderName(theBuildable, simpleName),
-                simpleName)
-                , out);
-
-        emptyLine(out);
-    }
-
-    private void writePackageAndImports(Name qualifiedName, OutputStreamWriter out) throws IOException {
-        line("package " + packageNameFromQualifiedName(qualifiedName) + ";", out);
-        emptyLine(out);
-        line("import buildable.Builder;", out);
-        line("import java.lang.reflect.Field;", out);
-        line("import java.lang.reflect.Method;", out);
-        emptyLine(out);
-        emptyLine(out);
-    }
-
-    private void writeFluentElement(VariableElement field, String builderName, OutputStreamWriter out,
-                                    final Set<? extends Element> buildables) throws Exception{
-
-        final BuiltWith annotation = field.getAnnotation(BuiltWith.class);
-
-        // determine the default value
-
-
-        // write the field declaration
-        if (field.asType().getKind().isPrimitive()) {
-            // it's primitive, so let's not assign a default value...
-            line(format("\tprivate %s %s;",
-                    field.asType(),
-                    field.getSimpleName().toString()),
-                    out);
-        } else {
-            String defaultValue = determineDefaultValue(field, annotation);
-            if (defaultValue.isEmpty()) {
-                line(format("\tprivate %s %s;",
-                        field.asType(),
-                        field.getSimpleName().toString()),
-                        out);
-            } else {
-                line(format("\tprivate %s %s = %s;",
-                        field.asType(),
-                        field.getSimpleName().toString(),
-                        defaultValue),
-                        out);
-            }
-        }
-
-        String methodName = determineFluentMethodName(annotation, field);
-
-        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgType())){
-            // write the fluent built-with method that takes in the instance of the field
-            line(format("\tpublic %s %s(%s %s) {",
-                    builderName, methodName,
-                    field.asType(),
-                    field.getSimpleName()),
-                    out);
-        } else {
-            line(format("\tpublic %s %s(%s %s) {",
-                    builderName, methodName,
-                    annotation.overrideArgType(),
-                    field.getSimpleName())
-                    ,out);
-        }
-        if (annotation.overrideMethod() != BuiltWith.OverrideMethod.NULL) {
-            switch (annotation.overrideMethod()) {
-                case AddToList:
-                    line(format("\t\tthis.%s = new %s;", field.getSimpleName(), annotation.overrideClassifer()),
-                            out);
-                    line(format("\t\tjava.util.Collections.addAll(this.%s, %s);", field.getSimpleName(),
-                            field.getSimpleName()),
-                            out);
-            }
-
-        } else {
-            line(format("\t\tthis.%s = %s;",
-                    field.getSimpleName(),
-                    field.getSimpleName()),
-                    out);
-        }
-
-
-
-        line(format("\t\treturn this;"), out);
-        line("\t}", out);
-
-        emptyLine(out);
-
-        // check each @Buildable, if the field itself is of a class marked @Buildable, we can overload
-        // the fluent built-with method to also accept its builder as a parameter
-        boolean foundBuilderForVariable = false;
-        Element variableClassElement = null;
-        for (Element eachBuildable : buildables) {
-            if (eachBuildable.asType().equals(field.asType())) {
-                foundBuilderForVariable = true;
-                variableClassElement = eachBuildable;
-                break;
-            }
-        }
-
-        if (foundBuilderForVariable) {
-
-            final String packageNameOVariableBuilder = getPackageNameFrom(((TypeElement) variableClassElement)
-                    .getQualifiedName());
-            final Name classNameOfVariableBuilder = variableClassElement.getSimpleName();
-            final Buildable variableBuildable = variableClassElement.getAnnotation(Buildable.class);
-
-            line(format("\tpublic %s %s(%s %s) {", builderName, methodName,
-                    packageNameOVariableBuilder + "." + createBuilderName(variableBuildable, classNameOfVariableBuilder),
-                    field.getSimpleName() + "Builder"), out);
-
-            line(format("\t\tthis.%s = %s.build();",
-                    field.getSimpleName(),
-                    field.getSimpleName() + "Builder"),
-                    out);
-
-            line(format("\t\treturn this;"), out);
-            line("\t}", out);
-        }
-
-        emptyLine(out);
-    }
-
-    private String determineFluentMethodName(final BuiltWith annotation, final VariableElement field) {
-        if (!BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.methodName())) {
-            return annotation.methodName();
-        }
-        return "with" + capitalize(field.getSimpleName());
-    }
-
     @SuppressWarnings("unchecked")
-    private String determineDefaultValue(final VariableElement field, final BuiltWith builtWith)
+    private String determineFieldDefaultValue(final VariableElement field,
+                                              final BuiltWith builtWith,
+                                              String builderName)
             throws ClassNotFoundException {
 
-        System.err.println("Determining default value...");
         String defaultValue = builtWith.defaultValue();
-
         if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(defaultValue)) {
             try {
                 if (!field.asType().getKind().isPrimitive()) {
@@ -431,44 +195,11 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 defaultValue = "null";
             }
         }
+        this.processingEnv.getMessager().printMessage(NOTE,
+                format("Determined default value for %s.%s: %s",
+                        builderName,
+                        field.getSimpleName(),
+                        defaultValue));
         return defaultValue;
-    }
-
-    private String packageNameFromQualifiedName(Name qualifiedName) {
-        String fullClassName = qualifiedName.toString();
-        final int lastDot = fullClassName.lastIndexOf(".");
-        if (lastDot > 0) {
-            return fullClassName.substring(0, lastDot);
-        }
-        return "";
-    }
-
-    private void emptyLine(OutputStreamWriter writer) throws IOException {
-        writer.write('\n');
-    }
-
-    private void line(String text, OutputStreamWriter writer) throws IOException {
-        writer.write(text);
-        writer.write('\n');
-    }
-
-    private String createBuilderName(Buildable buildable, Name className) {
-        if (buildable.name().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
-            return className + "Builder";
-        } else {
-            return buildable.name();
-        }
-    }
-
-    private String createFactoryMethodName(Buildable buildable, Name className) {
-        if (buildable.factoryMethod().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
-            if (className.toString().matches("[AEIOUaeiou].*")) {
-                return "an" + className.toString();
-            } else {
-                return "a" + className.toString();
-            }
-        } else {
-            return buildable.factoryMethod();
-        }
     }
 }

@@ -109,7 +109,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface Buildable {
 
-    public static final String USE_SENSIBLE_DEFAULT = "";
+    String USE_SENSIBLE_DEFAULT = "";
 
 
     /**

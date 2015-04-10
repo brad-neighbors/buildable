@@ -50,7 +50,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface BuiltWith {
 
-    public static final String USE_SENSIBLE_DEFAULT = "";
+    String USE_SENSIBLE_DEFAULT = "";
 
     /**
      * Specifies the name of the method that will be generated on the builder to assign values to the field.
@@ -77,8 +77,8 @@ public @interface BuiltWith {
 
     OverrideMethod overrideMethod() default OverrideMethod.NULL;
 
-    public enum OverrideMethod {
-        NULL, AddToList,
+    enum OverrideMethod {
+        NULL, AddToList
     }
 
 
