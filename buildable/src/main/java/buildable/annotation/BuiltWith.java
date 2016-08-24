@@ -7,37 +7,36 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation that specifies fields in an @Buildable may be assigned using a fluent api approach in the
- * generated Builder.
- * <p/>
- * Use the methodName() to specify the name of the fluent method that will be generated in the Builder.
- * <p/>
- * Fluently chain together calls for an expressive build, such as:
- * </p>
+ * <p>Annotation that specifies fields in an @Buildable may be assigned using a fluent api approach in the
+ * generated Builder.</p>
+ *
+ * <p>Use the methodName() to specify the name of the fluent method that will be generated in the Builder.</p>
+ *
+ * <p>Fluently chain together calls for an expressive build, such as:</p>
  * Given a class:
  * <pre>
  *     package com.acme;
  *
- *     <tt>@</tt>Buildable(name="UserBuilder", factoryMethod="aUser")
+ *     <code>@</code>Buildable(name="UserBuilder", factoryMethod="aUser")
  *     public class User {
  *
- *         <tt>@</tt>BuiltWith(methodName="named")
+ *         <code>@</code>BuiltWith(methodName="named")
  *         private String name;
  *
- *         <tt>@</tt>BuiltWith(methodName="identifiedBy")
+ *         <code>@</code>BuiltWith(methodName="identifiedBy")
  *         private Long id;
  *
- *         <tt>@</tt>BuiltWith(methodName="livingIn")
+ *         <code>@</code>BuiltWith(methodName="livingIn")
  *         private String zipCode;
  *
- *         <tt>@</tt>BuiltWith(methodName="withEmail")
+ *         <code>@</code>BuiltWith(methodName="withEmail")
  *         private String email;
  *
  *         protected User(){}
  *     }
  * </pre>
- * <p/>
- * Use the generated builder like this:
+ *
+ * <p>Use the generated builder like this:</p>
  * <pre>
  *     import static com.acme.UserBuilder.aUser;
  *     ...

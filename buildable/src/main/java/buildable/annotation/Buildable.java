@@ -7,37 +7,34 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies that the type is buildable using a Fluent-API style Builder pattern.
- * <p/>
- * Classes annotated with @Buildable must have an empty protected (or public) constructor.
- * <p/>
- * Each field that you would like the builder to use in a fluent api, annotate with @BuiltWith.
- * <p/>
- * The name of the Builder that is generated may be specified with the name().
- * <p/>
- * The Builder's factory method may be specified with factoryMethod();
- * <p/>
- * Given a type User.java:
+ * <p>Specifies that the type is buildable using a Fluent-API style Builder pattern.</p>
+ * <p>Classes annotated with @Buildable must have an empty protected (or public) constructor.</p>
+ * <p>Each field that you would like the builder to use in a fluent api, annotate with @BuiltWith.</p>
+ *
+ * <p>The name of the Builder that is generated may be specified with the name().</p>
+ * <p>The Builder's factory method may be specified with factoryMethod();</p>
+ *
+ * <p>Given a type User.java:</p>
  * <pre>
  *     package com.acme;
  *
- *     <tt>@</tt>Buildable(name="UserBuilder", factoryMethod="aUser")
+ *     <code>@</code>Buildable(name="UserBuilder", factoryMethod="aUser")
  *     public class User {
  *
- *         <tt>@</tt>BuiltWith(methodName="named")
+ *         <code>@</code>BuiltWith(methodName="named")
  *         private String name;
  *
  *         protected User(){}
  *     }
  * </pre>
- * <p/>
- * Will result in a builder class: (with full implementation omitted for brevity..)
+ *
+ * <p>Will result in a builder class: (with full implementation omitted for brevity..)</p>
  *
  * <pre>
  *  package com.acme;
  *  import buildable.Builder;
  *  ...
- *  public class UserBuilder implements Builder<tt><</tt>User<tt>></tt> {
+ *  public class UserBuilder implements Builder&lt;User&gt; {
  *
  *      public static UserBuilder aUser() {
  *          return new UserBuilder();
@@ -54,30 +51,30 @@ import java.lang.annotation.Target;
  *  }
  * </pre>
  *
- * <p/>
- * Conversely a builder can be specified to be built as an abstract class,
- * in which case the factoryMethod() will be ignored:
+ *
+ * <p>Conversely a builder can be specified to be built as an abstract class,
+ * in which case the factoryMethod() will be ignored:</p>
  *
  * <pre>
  *     package com.acme;
  *
- *     <tt>@</tt>Buildable(name="UserBuilder", makeAbstract=true)
+ *     <code>@</code>Buildable(name="UserBuilder", makeAbstract=true)
  *     public class User {
  *
- *         <tt>@</tt>BuiltWith(methodName="named")
+ *         <code>@</code>BuiltWith(methodName="named")
  *         private String name;
  *
  *         protected User(){}
  *     }
  * </pre>
- * <p/>
  *
- * Will result in a builder:
+ *
+ * <p>Will result in a builder:</p>
  * <pre>
  *  package com.acme;
  *  import buildable.Builder;
  *  ...
- *  public abstract class UserBuilder implements Builder<tt><</tt>User<tt>></tt> {
+ *  public abstract class UserBuilder implements Builder&lt;User&gt; {
  *
  *      protected UserBuilder(){}
  *
@@ -90,10 +87,10 @@ import java.lang.annotation.Target;
  *      }
  *  }
  * </pre>
- * <p/>
- * That can of course be further subclassed as needed:
+ *
+ * <p>That can of course be further subclassed as needed:</p>
  * <pre>
- *   package com.acme;
+ *  package com.acme;
  *  import buildable.Builder;
  *  ...
  *  public class MyUserBuilder extends UserBuilder {
