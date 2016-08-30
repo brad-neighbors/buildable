@@ -35,7 +35,7 @@ import static javax.tools.Diagnostic.Kind.NOTE;
         "buildable.annotation.Buildable",
         "buildable.annotation.BuiltWith",
         "buildable.annotation.ExcludeFromBuilder"})
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SuppressWarnings("UnusedDeclaration")
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 

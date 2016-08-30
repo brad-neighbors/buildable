@@ -11,7 +11,12 @@ subprojects {
         mavenLocal()
     }
 
+    dependencies{
+        compile 'com.squareup:javapoet:1.7.0'
+    }
+
 }
+
 project(':example') {
     configurations {
         annotations
@@ -30,7 +35,7 @@ project(':example') {
 
 
     compileJava {
-            options.compilerArgs = ["-processor","buildable.annotation.processor.BuildableAnnotationProcessor"]
+            options.compilerArgs = ["-processor","buildable.annotation.processor.BuildableAnnotationProcessor,buildable.config.processor.BuildableConfigProcessor"]
             classpath += configurations.annotations
     }
 
