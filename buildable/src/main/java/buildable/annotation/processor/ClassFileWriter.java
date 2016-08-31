@@ -88,9 +88,9 @@ public class ClassFileWriter {
     }
 
     public void writeFluentElement(VariableElement field,
-                                   BuiltWith annotation,
-                                   final Set<? extends Element> buildables,
-                                   String defaultValue) throws Exception {
+            BuiltWith annotation,
+            final Set<? extends Element> buildables,
+            String defaultValue) throws Exception {
 
         final boolean hasBuiltWithSpecifications = annotation != null;
 
@@ -106,37 +106,23 @@ public class ClassFileWriter {
         String methodName = determineFluentMethodName(annotation, field);
         MethodSpec.Builder fieldMethod = MethodSpec.methodBuilder(methodName).addModifiers(Modifier.PUBLIC).returns(builderClass);
 
+        if (hasBuiltWithSpecifications && annotation.overrideMethod() == BuiltWith.OverrideMethod.AddToList) {
+            TypeName innerClass = ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0);
+            fieldMethod.addParameter(ArrayTypeName.of(innerClass), field.getSimpleName().toString());
 
-        if (hasBuiltWithSpecifications && !BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgType())) {
-            fieldMethod.addParameter(ClassName.get(packageNameFromQualifiedName(annotation.overrideArgType()),
-                    classNameFromQualifiedName(annotation.overrideArgType())), field.getSimpleName().toString());
-        }
-        else if (hasBuiltWithSpecifications && annotation.overrideMethod() != BuiltWith.OverrideMethod.NULL) {
-            switch (annotation.overrideMethod()) {
-                case AddToList:
-                    TypeName innerClass = ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0);
-                    fieldMethod.addParameter(ArrayTypeName.of(innerClass), field.getSimpleName().toString());
+            TypeName listImpl;
+            if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideClassifer())) {
+                listImpl = ParameterizedTypeName.get(ClassName.get(ArrayList.class), ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0));
+            } else {
+                listImpl = ClassName.get(packageNameFromQualifiedName(annotation.overrideClassifer()), classNameFromQualifiedName(annotation.overrideClassifer()));
             }
+            fieldMethod.addStatement("this.$L = new $T()", field.getSimpleName(), listImpl);
+            fieldMethod.addStatement("$T.addAll(this.$L, $L)", Collections.class, field.getSimpleName(), field.getSimpleName());
+            fieldMethod.varargs();
+
         } else {
             // write the fluent built-with method that takes in the instance of the field
             fieldMethod.addParameter(TypeName.get(field.asType()), field.getSimpleName().toString());
-        }
-
-        if (hasBuiltWithSpecifications && annotation.overrideMethod() != BuiltWith.OverrideMethod.NULL) {
-            switch (annotation.overrideMethod()) {
-                case AddToList:
-                    TypeName listImpl;
-                    if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideClassifer())) {
-                        listImpl = ParameterizedTypeName.get(ClassName.get(ArrayList.class), ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0));
-                    } else {
-                        listImpl = ClassName.get(packageNameFromQualifiedName(annotation.overrideClassifer()), classNameFromQualifiedName(annotation.overrideClassifer()));
-                    }
-                    fieldMethod.addStatement("this.$L = new $T()", field.getSimpleName(), listImpl);
-                    fieldMethod.addStatement("$T.addAll(this.$L, $L)", Collections.class, field.getSimpleName(), field.getSimpleName());
-                    fieldMethod.varargs();
-            }
-
-        } else {
             fieldMethod.addStatement("this.$L = $L", field.getSimpleName(), field.getSimpleName());
         }
 

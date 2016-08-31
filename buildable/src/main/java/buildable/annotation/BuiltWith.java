@@ -70,9 +70,9 @@ public @interface BuiltWith {
      */
     String defaultValue() default USE_SENSIBLE_DEFAULT;
 
-    @Deprecated
-    String overrideArgType() default USE_SENSIBLE_DEFAULT;
-
+    /**
+     * @return The fully qualified name of the impl class to use for overrideMethod()
+     */
     String overrideClassifer() default USE_SENSIBLE_DEFAULT;
 
     OverrideMethod overrideMethod() default OverrideMethod.NULL;
