@@ -70,6 +70,7 @@ public @interface BuiltWith {
      */
     String defaultValue() default USE_SENSIBLE_DEFAULT;
 
+    @Deprecated
     String overrideArgType() default USE_SENSIBLE_DEFAULT;
 
     String overrideClassifer() default USE_SENSIBLE_DEFAULT;

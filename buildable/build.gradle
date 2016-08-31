@@ -14,6 +14,11 @@ artifacts {
     archives sourcesJar
 }
 
+dependencies{
+    compile group: 'com.squareup', name:'javapoet', version: '1.7.0'
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
+}
+
 if (hasProperty("publish") && !ext.publish.equals("false")) {
     signing {
         sign configurations.archives

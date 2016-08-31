@@ -25,6 +25,10 @@ public class Util {
     }
 
     public static String createBuilderName(Buildable buildable, Name className) {
+        return createBuilderName(buildable, className.toString());
+    }
+
+    public static String createBuilderName(Buildable buildable, String className) {
         if (buildable.name().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
             return className + "Builder";
         } else {

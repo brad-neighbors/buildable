@@ -6,7 +6,7 @@ import buildable.annotation.BuiltWith;
 /**
  * An example POJO that demonstrates generating a UserBuilder.
  */
-@Buildable(name = "UserBuilder", factoryMethod = "aUser")
+@Buildable(name = "UserBuilder", factoryMethod = "aUser", cloneMethod = "copiedFrom")
 public class User {
 
     @SuppressWarnings("UnusedDeclaration")
