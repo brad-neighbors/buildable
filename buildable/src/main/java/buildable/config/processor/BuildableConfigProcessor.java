@@ -82,7 +82,7 @@ public class BuildableConfigProcessor extends AbstractProcessor {
                         List<String> excludedFields = asList(annotation.excludedFields());
                         fields.removeIf(v -> excludedFields.contains(v.toString()));
 
-                        fieldBuilders = Arrays.stream(annotation.value()).collect(Collectors.toMap(BuildField::name, BuildField::value));
+                        fieldBuilders = Arrays.stream(annotation.fields()).collect(Collectors.toMap(BuildField::name, BuildField::value));
                     }
 
 

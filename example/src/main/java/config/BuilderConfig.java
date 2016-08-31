@@ -15,7 +15,7 @@ public class BuilderConfig {
     @InjectBuildable(excludedFields = "ignored")
     private ExcludedFieldTestObject excludedFieldTestObject;
 
-    @InjectBuildable({
+    @InjectBuildable(fields = {
             @BuildField(name = "name", value = @BuiltWith(defaultValue = "John")),
             @BuildField(name = "age", value = @BuiltWith(defaultValue = "25")),
             @BuildField(name = "account", value = @BuiltWith(defaultValue = "new Account(\"account_id\")"))
