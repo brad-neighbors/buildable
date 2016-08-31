@@ -35,63 +35,64 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.8.1'
 }
 
+if (hasProperty("publish") && !ext.publish.equals("false")) {
+    signing {
+        sign configurations.archives
+    }
 
-signing {
-    sign configurations.archives
-}
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            repository(url: version.endsWith('RELEASE') ? 'https://oss.sonatype.org/service/local/staging/deploy/maven2' : 'https://oss.sonatype.org/content/repositories/snapshots') {
-                authentication(userName: sonatypeUsername, password: sonatypePassword)
-            }
-
-            pom.project {
-                name 'Buildable Examples with Tests'
-                artifactId 'example'
-                packaging 'jar'
-                description 'Examples of @Buildable use and tests'
-                url 'http://incandescent.bradneighbors.com/'
-
-                parent {
-                    groupId 'org.sonatype.oss'
-                    artifactId 'oss-parent'
-                    version '7'
+                repository(url: version.endsWith('RELEASE') ? 'https://oss.sonatype.org/service/local/staging/deploy/maven2' : 'https://oss.sonatype.org/content/repositories/snapshots') {
+                    authentication(userName: sonatypeUsername, password: sonatypePassword)
                 }
 
-                scm {
-                    url 'https://github.com/brad-neighbors/buildable/'
-                    connection 'scm:git:git@github.com:brad-neighbors/buildable.git'
-                    developerConnection 'scm:git:git@github.com:brad-neighbors/buildable.git'
-                }
+                pom.project {
+                    name 'Buildable Examples with Tests'
+                    artifactId 'example'
+                    packaging 'jar'
+                    description 'Examples of @Buildable use and tests'
+                    url 'http://incandescent.bradneighbors.com/'
 
-                licenses {
-                    license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        distribution 'repo'
+                    parent {
+                        groupId 'org.sonatype.oss'
+                        artifactId 'oss-parent'
+                        version '7'
                     }
-                }
 
-                developers {
-                    developer {
-                        id 'bneighbors'
-                        name 'Brad Neighbors'
-                        email 'brad.r.neighbors@gmail.com'
-                        url 'http://incandescent.bradneighbors.com/'
-                        timezone '-6'
-                        roles {
-                            role 'lead'
+                    scm {
+                        url 'https://github.com/brad-neighbors/buildable/'
+                        connection 'scm:git:git@github.com:brad-neighbors/buildable.git'
+                        developerConnection 'scm:git:git@github.com:brad-neighbors/buildable.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'The Apache Software License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            distribution 'repo'
                         }
                     }
-                    developer {
-                        id 'bduong'
-                        name 'Ben Duong'
-                        email 'benjaminf.duong@gmail.com'
-                        timezone '-6'
+
+                    developers {
+                        developer {
+                            id 'bneighbors'
+                            name 'Brad Neighbors'
+                            email 'brad.r.neighbors@gmail.com'
+                            url 'http://incandescent.bradneighbors.com/'
+                            timezone '-6'
+                            roles {
+                                role 'lead'
+                            }
+                        }
+                        developer {
+                            id 'bduong'
+                            name 'Ben Duong'
+                            email 'benjaminf.duong@gmail.com'
+                            timezone '-6'
+                        }
                     }
                 }
             }
