@@ -31,8 +31,6 @@ import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
-import org.apache.commons.lang3.StringUtils;
-
 import buildable.Builder;
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
@@ -269,7 +267,11 @@ public class ClassFileWriter {
     }
 
     private String packageNameFromQualifiedName(String fullClassName) {
-        return StringUtils.substringBeforeLast(fullClassName, ".");
+        final int lastDot = fullClassName.lastIndexOf(".");
+        if (lastDot > 0) {
+            return fullClassName.substring(0, lastDot);
+        }
+        return "";
     }
 
     private String classNameFromQualifiedName(Name fullClassName) {
@@ -277,6 +279,10 @@ public class ClassFileWriter {
     }
 
     private String classNameFromQualifiedName(String fullClassName) {
-        return StringUtils.substringAfterLast(fullClassName, ".");
+        final int lastDot = fullClassName.lastIndexOf(".");
+        if (lastDot > 0 && lastDot < fullClassName.length() - 1) {
+            return fullClassName.substring(lastDot+1);
+        }
+        return "";
     }
 }
