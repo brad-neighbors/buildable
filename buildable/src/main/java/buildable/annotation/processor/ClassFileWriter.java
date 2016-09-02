@@ -5,276 +5,242 @@
  */
 package buildable.annotation.processor;
 
-import buildable.annotation.Buildable;
-import buildable.annotation.BuiltWith;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
+import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.tools.JavaFileObject;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.util.List;
-import java.util.Set;
+import com.squareup.javapoet.ArrayTypeName;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.FieldSpec;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ParameterSpec;
+import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.TypeSpec;
+
+import buildable.Builder;
+import buildable.annotation.Buildable;
+import buildable.annotation.BuiltWith;
 
 import static buildable.annotation.processor.Util.capitalize;
 import static buildable.annotation.processor.Util.createBuilderName;
 import static buildable.annotation.processor.Util.packageNameOf;
-import static java.lang.String.format;
 
 /**
  * Responsible for writing Builder class files.
  */
 public class ClassFileWriter {
 
-    private final Writer out;
+    private static final MethodSpec GET_DECLARED_FIELD_METHOD = createGetDeclaredFieldMethod();
     private final Buildable theBuildable;
-    private final OutputStream outputStream;
+    private TypeSpec.Builder builder;
+    private ClassName builderClass;
+    private ClassName builtClass;
+    private String packageName;
 
-    public ClassFileWriter(Buildable theBuildable, JavaFileObject javaFileObject) throws IOException {
+    public ClassFileWriter(Buildable theBuildable, Name qualifiedClassName) throws IOException {
         this.theBuildable = theBuildable;
-        this.outputStream = javaFileObject.openOutputStream();
-        this.out = new OutputStreamWriter(outputStream);
-    }
-
-    public void writePackageAndImports(Name qualifiedName) throws IOException {
-        line("package " + packageNameFromQualifiedName(qualifiedName) + ";");
-        emptyLine();
-        line("import buildable.Builder;");
-        line("import java.lang.reflect.Field;");
-        line("import java.lang.reflect.Method;");
-        emptyLine();
-        emptyLine();
+        this.packageName = packageNameFromQualifiedName(qualifiedClassName);
+        this.builtClass = ClassName.get(packageName, classNameFromQualifiedName(qualifiedClassName));
+        this.builderClass = ClassName.get(packageName, createBuilderName(theBuildable, classNameFromQualifiedName(qualifiedClassName)));
     }
 
 
-    public void writeClassDeclaration(Name simpleName) throws IOException {
-        line(format("public %s class %s implements Builder<%s> {",
-                theBuildable.makeAbstract() ? "abstract" : "",
-                createBuilderName(theBuildable, simpleName),
-                simpleName));
+    public void writeClassDeclaration() throws IOException {
+        ParameterizedTypeName typeName = ParameterizedTypeName.get(ClassName.get(Builder.class), builtClass);
+        builder = TypeSpec.classBuilder(builderClass).addModifiers(Modifier.PUBLIC).addSuperinterface(typeName);
 
-        emptyLine();
+        if (theBuildable.makeAbstract()) {
+            builder.addModifiers(Modifier.ABSTRACT);
+        }
     }
 
-    public void writeFactoryMethodAndConstructor(Name simpleName) throws IOException {
+    public void writeFactoryMethodAndConstructor() throws IOException {
         // honor the "factoryMethod" name in the @Buildable if not building an abstract clas
         if (!theBuildable.makeAbstract()) {
-            line(format("\tpublic static %s %s() {",
-                            createBuilderName(theBuildable, simpleName),
-                            createFactoryMethodName(theBuildable, simpleName)));
-
-            line(format("\t\treturn new %s();", createBuilderName(theBuildable, simpleName)));
-
-            line("\t}");
-            emptyLine();
+            MethodSpec factoryMethod = MethodSpec.methodBuilder(createFactoryMethodName(theBuildable, builtClass.simpleName()))
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(builderClass)
+                    .addStatement("return new $T()", builderClass).build();
+            builder.addMethod(factoryMethod);
         }
 
         // if it's abstract, make the constructor protected, private otherwise
-        if (theBuildable.makeAbstract()) {
-            line(format("\tprotected %s() {}",
-                            createBuilderName(theBuildable, simpleName)));
-        } else {
-            line(format("\tprivate %s() {}",
-                            createBuilderName(theBuildable, simpleName)));
-        }
-
-        emptyLine();
+        builder.addMethod(MethodSpec
+                .constructorBuilder()
+                .addModifiers(theBuildable.makeAbstract() ? Modifier.PROTECTED : Modifier.PRIVATE)
+                .build());
     }
 
     public void writeFluentElement(VariableElement field,
-                                   String builderName,
-                                   final Set<? extends Element> buildables,
-                                   String defaultValue) throws Exception{
+            BuiltWith annotation,
+            final Set<? extends Element> buildables,
+            String defaultValue) throws Exception {
 
-        final BuiltWith annotation = field.getAnnotation(BuiltWith.class);
         final boolean hasBuiltWithSpecifications = annotation != null;
 
         // write the field declaration
-        if (field.asType().getKind().isPrimitive() || !hasBuiltWithSpecifications) {
-            // it's primitive, so let's not assign a default value...
-            line(format("\tprivate %s %s;",
-                            field.asType(),
-                            field.getSimpleName().toString()));
-        } else {
-            if (defaultValue.isEmpty()) {
-                line(format("\tprivate %s %s;",
-                                field.asType(),
-                                field.getSimpleName().toString()));
-            } else {
-                line(format("\tprivate %s %s = %s;",
-                                field.asType(),
-                                field.getSimpleName().toString(),
-                                defaultValue));
-            }
+        FieldSpec.Builder fieldBuilder = FieldSpec.builder(TypeName.get(field.asType()), field.getSimpleName().toString())
+                .addModifiers(Modifier.PRIVATE);
+        if (!defaultValue.isEmpty()) {
+            fieldBuilder.initializer(defaultValue);
         }
+        builder.addField(fieldBuilder.build());
+
 
         String methodName = determineFluentMethodName(annotation, field);
+        MethodSpec.Builder fieldMethod = MethodSpec.methodBuilder(methodName).addModifiers(Modifier.PUBLIC).returns(builderClass);
 
-        if (!hasBuiltWithSpecifications || BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideArgType())){
+        if (hasBuiltWithSpecifications && annotation.overrideMethod() == BuiltWith.OverrideMethod.AddToList) {
+            TypeName innerClass = ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0);
+            fieldMethod.addParameter(ArrayTypeName.of(innerClass), field.getSimpleName().toString());
+
+            TypeName listImpl;
+            if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(annotation.overrideClassifer())) {
+                listImpl = ParameterizedTypeName.get(ClassName.get(ArrayList.class), ((ParameterizedTypeName) ParameterizedTypeName.get(field.asType())).typeArguments.get(0));
+            } else {
+                listImpl = ClassName.get(packageNameFromQualifiedName(annotation.overrideClassifer()), classNameFromQualifiedName(annotation.overrideClassifer()));
+            }
+            fieldMethod.addStatement("this.$L = new $T()", field.getSimpleName(), listImpl);
+            fieldMethod.addStatement("$T.addAll(this.$L, $L)", Collections.class, field.getSimpleName(), field.getSimpleName());
+            fieldMethod.varargs();
+
+        } else {
             // write the fluent built-with method that takes in the instance of the field
-            line(format("\tpublic %s %s(%s %s) {",
-                            builderName,
-                            methodName,
-                            field.asType(),
-                            field.getSimpleName()));
-        } else {
-            line(format("\tpublic %s %s(%s %s) {",
-                    builderName,
-                    methodName,
-                    annotation.overrideArgType(),
-                    field.getSimpleName()));
+            fieldMethod.addParameter(TypeName.get(field.asType()), field.getSimpleName().toString());
+            fieldMethod.addStatement("this.$L = $L", field.getSimpleName(), field.getSimpleName());
         }
 
-        if (hasBuiltWithSpecifications && annotation.overrideMethod() != BuiltWith.OverrideMethod.NULL) {
-            switch (annotation.overrideMethod()) {
-                case AddToList:
-                    line(format("\t\tthis.%s = new %s;", 
-                            field.getSimpleName(), 
-                            annotation.overrideClassifer()));
-                    line(format("\t\tjava.util.Collections.addAll(this.%s, %s);", 
-                                    field.getSimpleName(),
-                                    field.getSimpleName()));
-            }
+        fieldMethod.addStatement("return this");
+        builder.addMethod(fieldMethod.build());
 
-        } else {
-            line(format("\t\tthis.%s = %s;",
-                            field.getSimpleName(),
-                            field.getSimpleName()));
-        }
+        writeMethodForFieldBuilderIfExists(field, buildables, methodName);
+    }
 
-        line("\t\treturn this;");
-        line("\t}");
+    /**
+     * check each @Buildable, if the field itself is of a class marked @Buildable, we can overload
+     * the fluent built-with method to also accept its builder as a parameter
+     */
+    private void writeMethodForFieldBuilderIfExists(VariableElement field, Set<? extends Element> buildables,
+            String methodName) {
+        Optional<TypeElement> buildableVariable = buildables.stream().map(e -> ((TypeElement) e)).filter(eachBuildable -> eachBuildable.asType().equals
+                (field.asType())).findFirst();
 
-        emptyLine();
-
-        // check each @Buildable, if the field itself is of a class marked @Buildable, we can overload
-        // the fluent built-with method to also accept its builder as a parameter
-        boolean foundBuilderForVariable = false;
-        Element variableClassElement = null;
-        for (Element eachBuildable : buildables) {
-            if (eachBuildable.asType().equals(field.asType())) {
-                foundBuilderForVariable = true;
-                variableClassElement = eachBuildable;
-                break;
-            }
-        }
-
-        if (foundBuilderForVariable) {
-
-            final String packageNameOVariableBuilder = packageNameOf(((TypeElement) variableClassElement)
-                    .getQualifiedName());
+        if (buildableVariable.isPresent()) {
+            TypeElement variableClassElement = buildableVariable.get();
+            final String packageNameOVariableBuilder = packageNameOf(variableClassElement.getQualifiedName());
             final Name classNameOfVariableBuilder = variableClassElement.getSimpleName();
             final Buildable variableBuildable = variableClassElement.getAnnotation(Buildable.class);
 
-            line(format("\tpublic %s %s(%s %s) {", 
-                    builderName, 
-                    methodName,
-                    packageNameOVariableBuilder + "." + createBuilderName(variableBuildable, classNameOfVariableBuilder),
-                    field.getSimpleName() + "Builder"));
+            ClassName fieldBuildableClass = ClassName.get(packageNameOVariableBuilder, createBuilderName
+                    (variableBuildable, classNameOfVariableBuilder));
 
-            line(format("\t\tthis.%s = %s.build();",
-                            field.getSimpleName(),
-                            field.getSimpleName() + "Builder"));
+            MethodSpec builderMethod = MethodSpec.methodBuilder(methodName).addModifiers(Modifier.PUBLIC)
+                    .returns(builderClass)
+                    .addParameter(fieldBuildableClass, field.getSimpleName() + "Builder")
+                    .addStatement("this.$L = $L.build()", field.getSimpleName(), field.getSimpleName() + "Builder")
+                    .addStatement("return this").build();
 
-            line("\t\treturn this;");
-            line("\t}");
+            builder.addMethod(builderMethod);
         }
-
-        emptyLine();
     }
 
-    public void writeBuildMethod(
-            List<VariableElement> fieldsToBuild,
-            Name simpleClassName) throws IOException {
-        
-        line(format("\tpublic %s build() {", simpleClassName));
-        line("\t\ttry {");
-        line(format("\t\t\tfinal Class clazz = Class.forName(%s.class.getCanonicalName());", simpleClassName.toString()));
-        line(format("\t\t\tfinal %s instance = (%s) clazz.newInstance();", simpleClassName.toString(), simpleClassName.toString()));
-        emptyLine();
+    public void writeBuildMethod(List<VariableElement> fieldsToBuild) throws IOException {
+        MethodSpec.Builder buildMethod = MethodSpec.methodBuilder("build")
+                .addAnnotation(ClassName.get(Override.class))
+                .returns(builtClass)
+                .addModifiers(Modifier.PUBLIC)
+                .beginControlFlow("try")
+                .addStatement("final $T clazz = $T.forName($T.class.getCanonicalName())", Class.class, Class.class, builtClass)
+                .addStatement("final $T instance = ($T) clazz.newInstance()", builtClass, builtClass);
 
         for (VariableElement eachField : fieldsToBuild) {
+            String methodName = eachField.getSimpleName() + "Method";
+            String fieldName = eachField.getSimpleName() + "Field";
 
-            line("\t\t\ttry {");
-            line(format("\t\t\t\tfinal Method %sMethod = clazz.getDeclaredMethod(\"set%s\", %s.class);",
-                    eachField.getSimpleName(), capitalize(eachField.getSimpleName()),
-                    eachField.asType().toString().replaceAll("<[.,<>a-zA-Z0-9]*>", "")));
-            line(format("\t\t\t\t%sMethod.setAccessible(true);", eachField.getSimpleName()));
-            line(format("\t\t\t\t%sMethod.invoke(instance, %s);", eachField.getSimpleName(),
-                    eachField.getSimpleName()));
-            line("\t\t\t} catch (NoSuchMethodException nsme) {");
-            line("\t\t\t\t// method doesn't exist, set field directly");
+            buildMethod.beginControlFlow("try")
+                    .addStatement("final $T $L = clazz.getDeclaredMethod($S, $L.class)", Method.class, methodName,
+                            "set" + capitalize(eachField.getSimpleName()), eachField.asType().toString().replaceAll
+                                    ("<[.,<>a-zA-Z0-9]*>", ""))
+                    .addStatement("$L.setAccessible(true)", methodName)
+                    .addStatement("$L.invoke(instance, $L)", methodName, eachField.getSimpleName())
+                    .nextControlFlow("catch ($T nsme)", NoSuchMethodException.class)
+                    .addStatement("final $T $L = $N(clazz, $S)", Field.class, fieldName, GET_DECLARED_FIELD_METHOD,
+                            eachField.getSimpleName().toString())
+                    .addStatement("$L.setAccessible(true)", fieldName)
+                    .addStatement("$L.set(instance, $L)", fieldName, eachField.getSimpleName())
+                    .addStatement("$L.setAccessible(false)", fieldName)
+                    .endControlFlow();
 
-            line(format("\t\t\t\tfinal Field %sField = getDeclaredField(clazz, \"%s\");",
-                    eachField.getSimpleName(), eachField.getSimpleName()));
-            line(format("\t\t\t\t%sField.setAccessible(true);", eachField.getSimpleName()));
-            line(format("\t\t\t\t%sField.set(instance, %s);", eachField.getSimpleName(),
-                    eachField.getSimpleName()));
-            line(format("\t\t\t\t%sField.setAccessible(false);", eachField.getSimpleName()));
-            line("\t\t\t}");
-            emptyLine();
         }
 
-        line("\t\t\treturn instance;");
+        buildMethod.addStatement("return instance")
+                .nextControlFlow("catch ($T | $T e)", Exception.class, Error.class)
+                .addStatement("e.printStackTrace()")
+                .endControlFlow()
+                .addStatement("return null");
 
-        line("\t\t} catch (Exception e) {");
-        line("\t\t\te.printStackTrace();");
-        line("\t\t} catch (Error e) {");
-        line("\t\t\te.printStackTrace();");
-        line("\t\t}");
 
-        line("\t\treturn null;");
-        line("\t}");
+        builder.addMethod(buildMethod.build());
     }
 
 
-    public void finishClass() throws IOException {
-        line("\tprivate Field getDeclaredField(Class clazz, String fieldName) throws NoSuchFieldException {");
-        line("\t\ttry {");
-        line("\t\t\treturn clazz.getDeclaredField(fieldName);");
-        line("\t\t} catch (NoSuchFieldException e) {");
-        line("\t\t\tfinal Class superclass = clazz.getSuperclass();");
-        line("\t\t\tif (superclass == null) {");
-        line("\t\t\t\tthrow e;");
-        line("\t\t\t} else {");
-        line("\t\t\t\treturn getDeclaredField(superclass, fieldName);");
-        line("\t\t\t}");
-        line("\t\t}");
-        line("\t}");
-        line("}");
-        
-        out.flush();
-        outputStream.close();
-    }
+    public void finishClass(Filer filer) throws IOException {
+        builder.addMethod(GET_DECLARED_FIELD_METHOD);
+        JavaFile javaFile = JavaFile.builder(packageName, builder.build()).indent("\t").build();
 
-    public void writeCloneableMethod(Name simpleName, List<VariableElement> elements) {
         try {
-            char variable = simpleName.toString().toLowerCase().charAt(0);
-            line(format("\tpublic %s %s (%s %c) {",
-                    createBuilderName(theBuildable, simpleName),
-                    theBuildable.cloneMethod(),
-                    simpleName,
-                    variable));
-            for (VariableElement eachFluently : elements) {
-                line(format("\t\tthis.%s = %c.get%s();",
-                        eachFluently.getSimpleName(),
-                        variable,
-                        capitalize(eachFluently.getSimpleName())));
-            }
-
-            line(format("\t\treturn new %s();", createBuilderName(theBuildable, simpleName)));
-
-            line("\t}");
-            emptyLine();
-
+            javaFile.writeTo(filer);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static MethodSpec createGetDeclaredFieldMethod() {
+        ParameterSpec classParam = ParameterSpec.builder(Class.class, "clazz").build();
+        ParameterSpec fieldParam = ParameterSpec.builder(String.class, "fieldName").build();
+        return MethodSpec.methodBuilder("getDeclaredField")
+                .addException(NoSuchFieldException.class)
+                .addModifiers(Modifier.PRIVATE)
+                .returns(Field.class)
+                .addParameter(classParam).addParameter(fieldParam)
+                .beginControlFlow("try")
+                .addStatement("return $N.getDeclaredField($N)", classParam, fieldParam)
+                .nextControlFlow("catch ($T e)", NoSuchFieldException.class)
+                .addStatement("Class superclass = $N.getSuperclass();", classParam)
+                .beginControlFlow("if (superclass == null)")
+                .addStatement("throw e")
+                .nextControlFlow("else")
+                .addStatement("return getDeclaredField(superclass, $N)", fieldParam)
+                .endControlFlow()
+                .endControlFlow()
+                .build();
+    }
+
+    public void writeCloneableMethod(List<VariableElement> elements) {
+        MethodSpec.Builder clone = MethodSpec.methodBuilder(theBuildable.cloneMethod()).addModifiers(Modifier.PUBLIC)
+                .returns(builderClass)
+                .addParameter(builtClass, "original");
+
+        for (VariableElement eachFluently : elements) {
+            clone.addStatement("this.$L = $L.get$L()", eachFluently.getSimpleName(), "original", capitalize(eachFluently.getSimpleName()));
+        }
+        clone.addStatement("return this");
+        builder.addMethod(clone.build());
+
     }
 
     private String determineFluentMethodName(final BuiltWith annotation, final VariableElement field) {
@@ -284,12 +250,12 @@ public class ClassFileWriter {
         return "with" + capitalize(field.getSimpleName());
     }
 
-    private String createFactoryMethodName(Buildable buildable, Name className) {
+    private String createFactoryMethodName(Buildable buildable, String className) {
         if (buildable.factoryMethod().equals(Buildable.USE_SENSIBLE_DEFAULT)) {
-            if (className.toString().matches("[AEIOUaeiou].*")) {
-                return "an" + className.toString();
+            if (className.matches("[AEIOUaeiou].*")) {
+                return "an" + className;
             } else {
-                return "a" + className.toString();
+                return "a" + className;
             }
         } else {
             return buildable.factoryMethod();
@@ -297,7 +263,10 @@ public class ClassFileWriter {
     }
 
     private String packageNameFromQualifiedName(Name qualifiedName) {
-        String fullClassName = qualifiedName.toString();
+        return packageNameFromQualifiedName(qualifiedName.toString());
+    }
+
+    private String packageNameFromQualifiedName(String fullClassName) {
         final int lastDot = fullClassName.lastIndexOf(".");
         if (lastDot > 0) {
             return fullClassName.substring(0, lastDot);
@@ -305,12 +274,15 @@ public class ClassFileWriter {
         return "";
     }
 
-    private void emptyLine() throws IOException {
-        out.write('\n');
+    private String classNameFromQualifiedName(Name fullClassName) {
+        return classNameFromQualifiedName(fullClassName.toString());
     }
 
-    private void line(String text) throws IOException {
-        out.write(text);
-        out.write('\n');
+    private String classNameFromQualifiedName(String fullClassName) {
+        final int lastDot = fullClassName.lastIndexOf(".");
+        if (lastDot > 0 && lastDot < fullClassName.length() - 1) {
+            return fullClassName.substring(lastDot+1);
+        }
+        return "";
     }
 }
