@@ -10,11 +10,11 @@ import buildable.annotation.BuiltWith;
 public class User {
 
     @SuppressWarnings("UnusedDeclaration")
-    @BuiltWith(methodName = "named", defaultValue = "\"John Doe\"")
+    @BuiltWith(methodName = "named", defaultValue = "John Doe")
     private String name;
 
     @SuppressWarnings("UnusedDeclaration")
-    @BuiltWith(methodName = "withEmail", defaultValue = "\"johnDoe@acme.com\"")
+    @BuiltWith(methodName = "withEmail", defaultValue = "johnDoe@acme.com")
     private String email;
 
     @SuppressWarnings("UnusedDeclaration")

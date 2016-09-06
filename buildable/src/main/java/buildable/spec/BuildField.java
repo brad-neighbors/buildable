@@ -1,6 +1,7 @@
-package buildable.config;
+package buildable.spec;
 
-import buildable.annotation.Buildable;
+
+import buildable.annotation.BuiltWith;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -9,13 +10,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Documented
-@Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
-public @interface InjectBuildable {
+public @interface BuildField {
 
-    String[] excludedFields() default {};
+    String name();
 
-    Buildable value() default @Buildable;
-
-    BuildField[] fields() default {};
+    BuiltWith value();
 }

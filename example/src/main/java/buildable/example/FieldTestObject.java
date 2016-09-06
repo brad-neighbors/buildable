@@ -11,11 +11,11 @@ public class FieldTestObject {
     String stringWithNoSpecifiedMethodNameAndNoSpecifiedDefaultValue;
 
     @SuppressWarnings("UnusedDeclaration")
-    @BuiltWith(defaultValue = "\"default value\"")
+    @BuiltWith(defaultValue = "default value")
     String stringWithSpecifiedMethodNameButNoSpecifiedDefaultValue;
 
     @SuppressWarnings("UnusedDeclaration")
-    @BuiltWith(methodName = "aString", defaultValue = "\"default value\"")
+    @BuiltWith(methodName = "aString", defaultValue = "default value")
     String stringWithSpecifiedMethodNameAndSpecifiedDefaultValue;
 
     @SuppressWarnings("UnusedDeclaration")

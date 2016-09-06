@@ -11,11 +11,10 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.annotation.processing.Filer;
-import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
@@ -85,19 +84,23 @@ public class ClassFileWriter {
                 .build());
     }
 
-    public void writeFluentElement(VariableElement field,
-            BuiltWith annotation,
-            final Set<? extends Element> buildables,
-            String defaultValue) throws Exception {
+    public void writeFluentElement(VariableElement field, BuiltWith annotation, Map<TypeElement, Buildable> buildables) throws Exception {
 
         final boolean hasBuiltWithSpecifications = annotation != null;
 
         // write the field declaration
-        FieldSpec.Builder fieldBuilder = FieldSpec.builder(TypeName.get(field.asType()), field.getSimpleName().toString())
+        TypeName fieldClassName = TypeName.get(field.asType());
+        FieldSpec.Builder fieldBuilder = FieldSpec.builder(fieldClassName, field.getSimpleName().toString())
                 .addModifiers(Modifier.PRIVATE);
-        if (!defaultValue.isEmpty()) {
-            fieldBuilder.initializer(defaultValue);
+
+        if (annotation != null) {
+            if (!annotation.defaultValue().equals(BuiltWith.USE_SENSIBLE_DEFAULT)) {
+                //If the Class of the field is String use a string substitution otherwise use a literal.
+                String sub = "java.lang.String".equals(fieldClassName.toString()) ? "$S" : "$L";
+                fieldBuilder.initializer(sub, annotation.defaultValue());
+            }
         }
+
         builder.addField(fieldBuilder.build());
 
 
@@ -120,7 +123,7 @@ public class ClassFileWriter {
 
         } else {
             // write the fluent built-with method that takes in the instance of the field
-            fieldMethod.addParameter(TypeName.get(field.asType()), field.getSimpleName().toString());
+            fieldMethod.addParameter(fieldClassName, field.getSimpleName().toString());
             fieldMethod.addStatement("this.$L = $L", field.getSimpleName(), field.getSimpleName());
         }
 
@@ -134,19 +137,16 @@ public class ClassFileWriter {
      * check each @Buildable, if the field itself is of a class marked @Buildable, we can overload
      * the fluent built-with method to also accept its builder as a parameter
      */
-    private void writeMethodForFieldBuilderIfExists(VariableElement field, Set<? extends Element> buildables,
-            String methodName) {
-        Optional<TypeElement> buildableVariable = buildables.stream().map(e -> ((TypeElement) e)).filter(eachBuildable -> eachBuildable.asType().equals
-                (field.asType())).findFirst();
+    private void writeMethodForFieldBuilderIfExists(VariableElement field, Map<TypeElement, Buildable> buildables, String methodName) {
+        Optional<TypeElement> buildableVariable = buildables.keySet().stream().filter(eachBuildable -> eachBuildable.asType().equals(field.asType())).findFirst();
 
         if (buildableVariable.isPresent()) {
             TypeElement variableClassElement = buildableVariable.get();
             final String packageNameOVariableBuilder = packageNameOf(variableClassElement.getQualifiedName());
             final Name classNameOfVariableBuilder = variableClassElement.getSimpleName();
-            final Buildable variableBuildable = variableClassElement.getAnnotation(Buildable.class);
+            final Buildable variableBuildable = buildables.get(variableClassElement);
 
-            ClassName fieldBuildableClass = ClassName.get(packageNameOVariableBuilder, createBuilderName
-                    (variableBuildable, classNameOfVariableBuilder));
+            ClassName fieldBuildableClass = ClassName.get(packageNameOVariableBuilder, createBuilderName(variableBuildable, classNameOfVariableBuilder));
 
             MethodSpec builderMethod = MethodSpec.methodBuilder(methodName).addModifiers(Modifier.PUBLIC)
                     .returns(builderClass)

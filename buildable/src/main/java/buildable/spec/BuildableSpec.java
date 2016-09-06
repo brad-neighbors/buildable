@@ -1,7 +1,4 @@
-package buildable.config;
-
-
-import buildable.annotation.BuiltWith;
+package buildable.spec;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -10,10 +7,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Documented
+@Target({ElementType.TYPE})
 @Retention(RetentionPolicy.SOURCE)
-public @interface BuildField {
-
-    String name();
-
-    BuiltWith value();
+public @interface BuildableSpec {
 }
