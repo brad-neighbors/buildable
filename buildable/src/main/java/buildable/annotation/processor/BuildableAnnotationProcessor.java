@@ -40,13 +40,25 @@ import static javax.tools.Diagnostic.Kind.NOTE;
 @SuppressWarnings("UnusedDeclaration")
 public class BuildableAnnotationProcessor extends AbstractProcessor {
 
+    private Map<TypeElement, Buildable> allBuildables;
+    private boolean findBuildables = true;
+
+    public void setAllBuildables(Map<TypeElement, Buildable> buildables) {
+        this.allBuildables = buildables;
+        this.findBuildables = false;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> allTypeElements, RoundEnvironment roundEnvironment) {
         this.processingEnv.getMessager().printMessage(NOTE, "Creating builders for classes annotated with @Buildable...");
         if (roundEnvironment.processingOver()) {
             return true;
         }
-        final Map<TypeElement, Buildable> buildables = roundEnvironment.getElementsAnnotatedWith(Buildable.class).stream().filter(v -> v.getKind().isClass()).map(v -> ((TypeElement) v)).collect(Collectors.toMap(t -> t, t -> t.getAnnotation(Buildable.class)));
+        Map<TypeElement, Buildable> buildables = roundEnvironment.getElementsAnnotatedWith(Buildable.class).stream().filter(v -> v.getKind().isClass()).map(v -> ((TypeElement) v)).collect(Collectors.toMap(t -> t, t -> t.getAnnotation(Buildable.class)));
+        if (findBuildables) {
+            allBuildables = new HashMap<>();
+            allBuildables.putAll(buildables);
+        }
         if (buildables.size() == 0) {
             return true;
         }
@@ -83,7 +95,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                     writer.writeFluentElement(
                             eachFieldToBuild,
                             annotation,
-                            buildables
+                            allBuildables
                     );
                 }
 

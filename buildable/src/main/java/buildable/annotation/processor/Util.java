@@ -9,6 +9,8 @@ import buildable.annotation.Buildable;
 
 import javax.lang.model.element.Name;
 
+import java.lang.annotation.Annotation;
+
 /**
  * Shared utilities.
  */
@@ -34,6 +36,36 @@ public class Util {
         } else {
             return buildable.name();
         }
+    }
+
+    public static Buildable defaultBuildable() {
+        return new Buildable() {
+
+            @Override
+            public Class<? extends Annotation> annotationType() {
+                return Buildable.class;
+            }
+
+            @Override
+            public String name() {
+                return Buildable.USE_SENSIBLE_DEFAULT;
+            }
+
+            @Override
+            public boolean makeAbstract() {
+                return false;
+            }
+
+            @Override
+            public String factoryMethod() {
+                return Buildable.USE_SENSIBLE_DEFAULT;
+            }
+
+            @Override
+            public String cloneMethod() {
+                return Buildable.USE_SENSIBLE_DEFAULT;
+            }
+        };
     }
 
 }

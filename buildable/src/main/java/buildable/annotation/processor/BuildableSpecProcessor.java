@@ -1,4 +1,4 @@
-package buildable.spec.processor;
+package buildable.annotation.processor;
 
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
@@ -18,7 +18,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.util.Elements;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static buildable.annotation.processor.Util.defaultBuildable;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static javax.tools.Diagnostic.Kind.ERROR;
@@ -46,6 +46,14 @@ import static javax.tools.Diagnostic.Kind.NOTE;
 @SuppressWarnings("UnusedDeclaration")
 public class BuildableSpecProcessor extends AbstractProcessor {
 
+    private Map<TypeElement, Buildable> allBuildables;
+    private boolean findBuildables = true;
+
+    public void setAllBuildables(Map<TypeElement, Buildable> buildables) {
+        this.allBuildables = buildables;
+        this.findBuildables = false;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
         this.processingEnv.getMessager().printMessage(NOTE, "Creating builders for classes annotated with @Buildable...");
@@ -57,22 +65,25 @@ public class BuildableSpecProcessor extends AbstractProcessor {
             return true;
         }
 
-        Elements elementUtils = processingEnv.getElementUtils();
+        //Build a map of Classes (TypeElements) to Buildables
+        if (findBuildables) {
+            allBuildables = new HashMap<>();
+        }
+
         for (Element element : config) {
             TypeElement configClass = (TypeElement) element;
             //Each field in the BuildableSpec class corresponds to a class we want to write a builder for.
             Set<VariableElement> buildableClasses = configClass.getEnclosedElements().stream().filter(c -> c.getKind().isField()).map(c -> ((VariableElement) c)).collect(Collectors.toSet());
 
-            //Build a map of Classes (TypeElements) to Buildables
-            Map<TypeElement, Buildable> buildables = new HashMap<>();
+            if (findBuildables) {
+                for (VariableElement buildableClass : buildableClasses) {
+                    DeclaredType typeMirror = (DeclaredType) buildableClass.asType();
+                    TypeElement clazz = (TypeElement) typeMirror.asElement();
 
-            for (VariableElement buildableClass : buildableClasses) {
-                DeclaredType typeMirror = (DeclaredType) buildableClass.asType();
-                TypeElement clazz = (TypeElement) typeMirror.asElement();
+                    InjectBuildable injectBuildable = buildableClass.getAnnotation(InjectBuildable.class);
 
-                InjectBuildable injectBuildable = buildableClass.getAnnotation(InjectBuildable.class);
-
-                buildables.put(clazz, injectBuildable == null ? defaultBuildable() : injectBuildable.value());
+                    allBuildables.put(clazz, injectBuildable == null ? defaultBuildable() : injectBuildable.value());
+                }
             }
 
             //Each field in the builder config
@@ -83,7 +94,6 @@ public class BuildableSpecProcessor extends AbstractProcessor {
                 TypeElement classToBuild = (TypeElement) typeMirror.asElement();
 
                 //fields of the buildable class
-
                 ClassName className = ClassName.get(classToBuild);
                 ClassName builderName = ClassName.get(className.packageName(), className.simpleName() + "Builder");
 
@@ -116,7 +126,7 @@ public class BuildableSpecProcessor extends AbstractProcessor {
                         BuiltWith builtWith = fieldBuilders.get(fieldName);
                         boolean hasBuiltWith = builtWith != null;
 
-                        classWriter.writeFluentElement(field, builtWith, buildables);
+                        classWriter.writeFluentElement(field, builtWith, allBuildables);
                     }
 
                     classWriter.writeBuildMethod(new ArrayList<>(fields.values()));
@@ -174,35 +184,4 @@ public class BuildableSpecProcessor extends AbstractProcessor {
             }
         };
     }
-
-    private Buildable defaultBuildable() {
-        return new Buildable() {
-
-            @Override
-            public Class<? extends Annotation> annotationType() {
-                return Buildable.class;
-            }
-
-            @Override
-            public String name() {
-                return Buildable.USE_SENSIBLE_DEFAULT;
-            }
-
-            @Override
-            public boolean makeAbstract() {
-                return false;
-            }
-
-            @Override
-            public String factoryMethod() {
-                return Buildable.USE_SENSIBLE_DEFAULT;
-            }
-
-            @Override
-            public String cloneMethod() {
-                return Buildable.USE_SENSIBLE_DEFAULT;
-            }
-        };
-    }
-
 }

@@ -2,6 +2,7 @@ package buildable.example;
 
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
+import buildable.spec.example.Broker;
 
 /**
  * An example POJO that will help demonstrate the @BuiltWith annotations work when included in superclasses.
@@ -15,6 +16,8 @@ public class Account extends Identified {
     @BuiltWith(methodName = "named")
     private String name;
 
+    private Broker broker;
+
     public Account(String id){
         super(id);
     }
@@ -27,5 +30,9 @@ public class Account extends Identified {
     @SuppressWarnings("UnusedDeclaration")
     public String getName() {
         return name;
+    }
+
+    public Broker getBroker() {
+        return broker;
     }
 }

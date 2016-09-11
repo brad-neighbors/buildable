@@ -2,6 +2,7 @@ package buildable.example;
 
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
+import buildable.spec.example.Sender;
 
 /**
  * An example POJO that demonstrates generating a UserBuilder.
@@ -28,6 +29,8 @@ public class User {
     @SuppressWarnings("UnusedDeclaration")
     @BuiltWith(methodName = "havingAccount", defaultValue = "new Account(\"account_id\")")
     private Account account;
+
+
 
     protected User(){}
 

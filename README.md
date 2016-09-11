@@ -69,7 +69,7 @@ In your project's pom, you'll need something like this:
             <version>3.0</version>
             <configuration>
                 <annotationProcessors>
-                    <annotationProcessor>buildable.annotation.processor.BuildableAnnotationProcessor</annotationProcessor>
+                    <annotationProcessor>buildable.annotation.processor.BuildableCombinedProcessor</annotationProcessor>
                 </annotationProcessors>
                 <debug>true</debug>
                 <optimize>true</optimize>

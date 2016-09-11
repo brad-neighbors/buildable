@@ -1,5 +1,6 @@
 package buildable.example;
 
+import buildable.spec.example.BrokerBuilder;
 import buildable.spec.example.Sender;
 import org.junit.Test;
 
@@ -44,5 +45,13 @@ public class BasicBuilderTest {
 
     @Test public void canBuildMessageByPassingInSenderBuilder() {
         assertEquals("Sender matches", "jDoe", aNewMessage().withSender(aSender().withUsername("jDoe")).build().getSender().getUsername());
+    }
+
+    @Test public void canBuildSenderByPassingInAccountBuilder() {
+        assertEquals("Account matches", "foo", aSender().withAccount(anAccount().identifiedBy("foo")).build().getAccount().getId());
+    }
+
+    @Test public void canBuildAccountByPassingInBrokerBuilder() {
+        assertEquals("Broker matches", "bar", anAccount().withBroker(BrokerBuilder.aBroker().named("bar")).build().getBroker().getName());
     }
 }

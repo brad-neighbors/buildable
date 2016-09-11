@@ -26,4 +26,7 @@ public class BuilderConfig {
     private Sender sender;
 
     private Recipient recipient;
+
+    @InjectBuildable(fields = @BuildField(name = "name", value = @BuiltWith(methodName = "named")))
+    private Broker broker;
 }
