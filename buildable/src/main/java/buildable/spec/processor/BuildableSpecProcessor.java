@@ -34,6 +34,9 @@ import static java.util.Arrays.asList;
 import static javax.tools.Diagnostic.Kind.ERROR;
 import static javax.tools.Diagnostic.Kind.NOTE;
 
+/**
+ * An annotation processor to generate fluent-api style builders for classes included in an @BuildableSpec file.
+ */
 @SupportedAnnotationTypes(value = {
         "buildable.spec.BuildableSpec",
         "buildable.spec.InjectBuildable",

@@ -2,10 +2,9 @@ package buildable.spec.example;
 
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
-import buildable.example.Account;
-import buildable.spec.InjectBuildable;
-import buildable.spec.BuildableSpec;
 import buildable.spec.BuildField;
+import buildable.spec.BuildableSpec;
+import buildable.spec.InjectBuildable;
 
 
 @BuildableSpec

@@ -5,10 +5,11 @@ A java annotation processor for creating object builders with a [fluent-interfac
 * Annotate classes with `@Buildable`
 * Annotate fields with `@BuiltWith`
 * Support for subclasses `@BuildableSubclasses`
+* Support for third party classes with `@BuildableSpec`, `@InjectBuildable` and `@BuildField`
 
 # Pre-requisites
 
-* Java 7, yup
+* Java 8, yup
 * Gradle (to build from source)
 
 # Releases via Maven Central
@@ -28,12 +29,14 @@ A java annotation processor for creating object builders with a [fluent-interfac
 ## buildable
 
 * Contains the `@Buildable`, `@BuildableSubclasses`, and `@BuiltWith` annotations
+* Contains the `@BuildableSpec`, `@InjectBuildable`, and `@BuildField` annotations
 * Contains the `Builder<T>` interface that all builders will implement
-* Contains the annotation processor
+* Contains the annotation processors for creating Annotation Based Builders and Spec Based Builders.
 
 ## example
 
 * Contains a few example classes with annotations
+* Contains a few example classes using `@BuildableSpec`
 * Contains unit tests that prove the annotation processor worked
 
 # Gradle
@@ -112,7 +115,7 @@ import buildable.annotation.BuiltWith; // import this annotation
 @Buildable(name = "UserBuilder", factoryMethod = "aUser") 
 public class User {
 
-  @BuiltWith(methodName = "named", defaultValue = "\"Jane Doe\"") 
+  @BuiltWith(methodName = "named", defaultValue = "Jane Doe")
   private String name;
 
   @BuiltWith
@@ -171,7 +174,30 @@ public class UserBuilder implements Builder<User> {
   }
 }
 ```
-	  
+
+To do the same using `@BuildableSpec`, create a new file to specify the configuration
+```java
+import buildable.annotation.Buildable;
+import buildable.annotation.BuiltWith;
+import buildable.spec.BuildField;
+import buildable.spec.BuildableSpec;
+import buildable.spec.InjectBuildable;
+
+
+@BuildableSpec
+public class BuilderConfig {
+
+    @InjectBuildable(value = @Buildable(factoryMethod = "aUser"),
+            fields = {
+                    @BuildField(name = "name", value =  @BuiltWith(methodName = "named", defaultValue = "\"Jane Doe\"") ),
+                    @BuildField(name = "birthDate", value =   @BuiltWith(methodName = "bornOn")),
+            }
+    )
+    private User user;
+}
+```
+
+This will generate the exact same builder as the annotation based method.
 	
 
 
