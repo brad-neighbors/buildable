@@ -33,7 +33,7 @@ import static javax.tools.Diagnostic.Kind.NOTE;
  * that takes other builders to utilize builders created by the other annotation processor.
  */
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-public class BuildableCombinedProcessor  extends AbstractProcessor {
+public class BuildableProcessor extends AbstractProcessor {
 
     private BuildableAnnotationProcessor annotationProcessor;
     private BuildableSpecProcessor specProcessor;
