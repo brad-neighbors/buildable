@@ -7,8 +7,8 @@ public class Recipient extends Person {
 
     private Set<Message> inbox;
 
-    public Recipient(String username) {
-        super(username);
+    public Recipient(String firstName, String lastName) {
+        super(firstName + " " + lastName);
     }
 
     public Set<Message> getInbox() {

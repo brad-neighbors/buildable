@@ -9,8 +9,8 @@ sourceSets {
     }
 }
 
-clean.doFirst() {
-    delete "${projectDir}/generated/*"
+clean {
+    delete "${projectDir}/generated"
     println "Deleting ${projectDir}/generated"
 }
 

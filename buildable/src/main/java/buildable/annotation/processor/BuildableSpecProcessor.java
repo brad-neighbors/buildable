@@ -2,9 +2,10 @@ package buildable.annotation.processor;
 
 import buildable.annotation.Buildable;
 import buildable.annotation.BuiltWith;
-import buildable.annotation.processor.ClassFileWriter;
+import buildable.spec.BuildConstructor;
 import buildable.spec.BuildField;
 import buildable.spec.BuildableSpec;
+import buildable.spec.ConstructorArg;
 import buildable.spec.InjectBuildable;
 import com.squareup.javapoet.ClassName;
 
@@ -98,6 +99,7 @@ public class BuildableSpecProcessor extends AbstractProcessor {
                 ClassName builderName = ClassName.get(className.packageName(), className.simpleName() + "Builder");
 
                 InjectBuildable injectBuildable = fieldClass.getAnnotation(InjectBuildable.class);
+                BuildConstructor constructor = fieldClass.getAnnotation(BuildConstructor.class);
 
                 if (injectBuildable == null) {
                     injectBuildable = defaultInjectBuildable();
@@ -128,8 +130,14 @@ public class BuildableSpecProcessor extends AbstractProcessor {
 
                         classWriter.writeFluentElement(field, builtWith, allBuildables);
                     }
+                    if (constructor != null) {
+                        ConstructorArg[] args = constructor.value();
+                        for (ConstructorArg arg : args) {
+                            classWriter.writeFluentElement(arg, allBuildables);
+                        }
+                    }
 
-                    classWriter.writeBuildMethod(new ArrayList<>(fields.values()));
+                    classWriter.writeBuildMethod(new ArrayList<>(fields.values()), constructor == null ? null : asList(constructor.value()));
                     classWriter.finishClass(processingEnv.getFiler());
 
                 } catch (Exception e) {

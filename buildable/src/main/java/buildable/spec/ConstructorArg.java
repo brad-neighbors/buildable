@@ -10,14 +10,17 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Specifies a customization for a field in the builder. This is done by specifying the name of the field and supplying a @BuiltWith annotation. This
- * is similar to the field in the class being annotated with @BuiltWith.
+ * Specifies that an argument to be used in the constructor in the build() method in the generated builder.
+ * This generates a builder method as if the argument was a field.
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
-public @interface BuildField {
+public @interface ConstructorArg {
+
+    BuiltWith value() default @BuiltWith;
 
     String name();
 
-    BuiltWith value() default @BuiltWith;
+    Class type();
+
 }

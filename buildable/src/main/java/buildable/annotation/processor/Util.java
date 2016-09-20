@@ -6,8 +6,13 @@
 package buildable.annotation.processor;
 
 import buildable.annotation.Buildable;
+import buildable.spec.ConstructorArg;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.TypeName;
 
 import javax.lang.model.element.Name;
+import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeMirror;
 
 import java.lang.annotation.Annotation;
 
@@ -22,7 +27,10 @@ public class Util {
     }
 
     public static String capitalize(final Name simpleName) {
-        final String name = simpleName.toString();
+        return capitalize(simpleName.toString());
+    }
+
+    public static String capitalize(final String name) {
         return name.substring(0, 1).toUpperCase() + name.substring(1, name.length());
     }
 
@@ -35,6 +43,15 @@ public class Util {
             return className + "Builder";
         } else {
             return buildable.name();
+        }
+    }
+
+    public static TypeName extractTypeName(ConstructorArg arg) {
+        try {
+            return ClassName.get(arg.type());
+        } catch (MirroredTypeException mte) {
+            TypeMirror typeMirror = mte.getTypeMirror();
+            return ClassName.get(typeMirror);
         }
     }
 
