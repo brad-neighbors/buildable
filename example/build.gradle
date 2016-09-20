@@ -9,6 +9,11 @@ sourceSets {
     }
 }
 
+clean {
+    delete "${projectDir}/generated"
+    println "Deleting ${projectDir}/generated"
+}
+
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
     classifier = 'sources'

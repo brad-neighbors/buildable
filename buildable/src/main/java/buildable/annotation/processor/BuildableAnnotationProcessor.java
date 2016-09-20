@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static buildable.annotation.processor.Util.createBuilderName;
 import static java.lang.String.format;
@@ -35,9 +36,17 @@ import static javax.tools.Diagnostic.Kind.NOTE;
         "buildable.annotation.Buildable",
         "buildable.annotation.BuiltWith",
         "buildable.annotation.ExcludeFromBuilder"})
-@SupportedSourceVersion(SourceVersion.RELEASE_7)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 @SuppressWarnings("UnusedDeclaration")
 public class BuildableAnnotationProcessor extends AbstractProcessor {
+
+    private Map<TypeElement, Buildable> allBuildables;
+    private boolean findBuildables = true;
+
+    public void setAllBuildables(Map<TypeElement, Buildable> buildables) {
+        this.allBuildables = buildables;
+        this.findBuildables = false;
+    }
 
     @Override
     public boolean process(Set<? extends TypeElement> allTypeElements, RoundEnvironment roundEnvironment) {
@@ -45,25 +54,27 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         if (roundEnvironment.processingOver()) {
             return true;
         }
-        final Set<? extends Element> buildables = roundEnvironment.getElementsAnnotatedWith(Buildable.class);
+        Map<TypeElement, Buildable> buildables = roundEnvironment.getElementsAnnotatedWith(Buildable.class).stream().filter(v -> v.getKind().isClass()).map(v -> ((TypeElement) v)).collect(Collectors.toMap(t -> t, t -> t.getAnnotation(Buildable.class)));
+        if (findBuildables) {
+            allBuildables = new HashMap<>();
+            allBuildables.putAll(buildables);
+        }
         if (buildables.size() == 0) {
             return true;
         }
 
         final Map<TypeElement, List<VariableElement>> buildableFieldsMap= new HashMap<>();
-        for (Element eachBuildable : buildables) {
-            TypeElement eachBuildableTypeElement = (TypeElement) eachBuildable;
-            buildableFieldsMap.put(eachBuildableTypeElement, new ArrayList<VariableElement>());
+        for (TypeElement eachBuildableTypeElement : buildables.keySet()) {
+            buildableFieldsMap.put(eachBuildableTypeElement, new ArrayList<>());
             determineBuildableFields(eachBuildableTypeElement, eachBuildableTypeElement, buildableFieldsMap, roundEnvironment);
         }
 
-        for (Element eachBuildableClass : buildables) {
-            TypeElement eachBuildableTypeElement = (TypeElement) eachBuildableClass;
+        for (TypeElement eachBuildableTypeElement : buildables.keySet()) {
 
             Name simpleClassName = eachBuildableTypeElement.getSimpleName();
             Name qualifiedClassName = eachBuildableTypeElement.getQualifiedName();
 
-            final Buildable theBuildable = eachBuildableTypeElement.getAnnotation(Buildable.class);
+            final Buildable theBuildable = buildables.get(eachBuildableTypeElement);
             final String builderName = createBuilderName(theBuildable, simpleClassName);
 
             try {
@@ -84,9 +95,8 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                     writer.writeFluentElement(
                             eachFieldToBuild,
                             annotation,
-                            buildables,
-                            hasBuiltWithSpecifications ?
-                                    determineFieldDefaultValue(eachFieldToBuild, annotation, builderName) : "");
+                            allBuildables
+                    );
                 }
 
                 writer.writeBuildMethod(buildableFieldsMap.get(eachBuildableTypeElement));
@@ -96,7 +106,7 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
                 this.processingEnv.getMessager().printMessage(
                         ERROR,
                         format("Error creating %s: %s",
-                                qualifiedClassName.toString(),
+                                builderName,
                                 e.toString()));
             }
         }
@@ -150,49 +160,4 @@ public class BuildableAnnotationProcessor extends AbstractProcessor {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private String determineFieldDefaultValue(final VariableElement field,
-                                              final BuiltWith builtWith,
-                                              String builderName)
-            throws ClassNotFoundException {
-
-        String defaultValue = builtWith.defaultValue();
-        if (BuiltWith.USE_SENSIBLE_DEFAULT.equals(defaultValue)) {
-            try {
-                if (!field.asType().getKind().isPrimitive()) {
-                    Class clazz = Class.forName(field.asType().toString());
-
-                    if (clazz.isAssignableFrom(String.class)) {
-                        defaultValue = "\"value\"";
-                    } else if (clazz.isAssignableFrom(Character.class)) {
-                        defaultValue = "\'\\u0000\'";
-                    } else if (clazz.isAssignableFrom(Float.class)) {
-                        defaultValue = "0f";
-                    } else if (clazz.isAssignableFrom(Integer.class)) {
-                        defaultValue = "0";
-                    } else if (clazz.isAssignableFrom(Short.class)) {
-                        defaultValue = "0";
-                    } else if (clazz.isAssignableFrom(Long.class)) {
-                        defaultValue = "0L";
-                    } else if (clazz.isAssignableFrom(Double.class)) {
-                        defaultValue = "0D";
-                    } else if (clazz.isAssignableFrom(Boolean.class)) {
-                        defaultValue = "false";
-                    } else if (clazz.isAssignableFrom(Byte.class)) {
-                        defaultValue = "Byte.MIN_VALUE";
-                    } else {
-                        defaultValue = "null";
-                    }
-                }
-            }   catch(ClassNotFoundException e) {
-                defaultValue = "null";
-            }
-        }
-        this.processingEnv.getMessager().printMessage(NOTE,
-                format("Determined default value for %s.%s: %s",
-                        builderName,
-                        field.getSimpleName(),
-                        defaultValue));
-        return defaultValue;
-    }
 }

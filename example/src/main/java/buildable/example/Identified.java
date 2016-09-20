@@ -10,7 +10,7 @@ import buildable.annotation.BuiltWith;
 @BuildableSubclasses
 public abstract class Identified {
 
-    @BuiltWith(methodName = "identifiedBy", defaultValue = "\"id_123\"")
+    @BuiltWith(methodName = "identifiedBy", defaultValue = "id_123")
     private String id;
 
     protected Identified(String id) {

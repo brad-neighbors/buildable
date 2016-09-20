@@ -7,7 +7,7 @@ import buildable.annotation.BuiltWith;
 public class Admin {
 
     @SuppressWarnings("UnusedDeclaration")
-    @BuiltWith(methodName = "named", defaultValue = "\"suzieAdmin\"")
+    @BuiltWith(methodName = "named", defaultValue = "suzieAdmin")
     private String name;
 
     protected Admin(){}

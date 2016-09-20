@@ -10,8 +10,8 @@ subprojects {
         mavenCentral()
         mavenLocal()
     }
-
 }
+
 project(':example') {
     configurations {
         annotations
@@ -30,7 +30,7 @@ project(':example') {
 
 
     compileJava {
-            options.compilerArgs = ["-processor","buildable.annotation.processor.BuildableAnnotationProcessor"]
+            options.compilerArgs = ["-processor","buildable.annotation.processor.BuildableProcessor"]
             classpath += configurations.annotations
     }
 
